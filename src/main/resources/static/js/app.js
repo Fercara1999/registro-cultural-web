@@ -201,7 +201,16 @@ function _doFetchCover() {
       // Doble check: si mientras esperaba la respuesta se activó una portada existente, ignorar
       const ep = document.getElementById('existingCoverPath');
       if (ep && ep.value.trim()) return;
+
       if (data.url) _showCoverPreview(data.url); else _hideCoverPreview();
+
+      // Autorellenar director si viene de TMDB y el campo está vacío
+      if (data.director && data.director.trim()) {
+        const dirEl = document.querySelector('input[name="director"]');
+        if (dirEl && !dirEl.value.trim()) {
+          dirEl.value = data.director;
+        }
+      }
     })
     .catch(() => {});
 }
@@ -244,7 +253,7 @@ function _hideCoverPreview() {
 
 // ── PORTADA EXISTENTE (reutilizar de registro previo) ────────────────
 function _showExistingCoverHint(coverPath) {
-  clearTimeout(coverDebounce);  // cancelar cualquier búsqueda de TMDB pendiente
+  clearTimeout(coverDebounce);
   _hideCoverPreview();
   _hideDropZone();
   const existing = document.getElementById('existingCoverPath');
@@ -313,10 +322,8 @@ function _doFetchHint() {
       if (dl && data.titles) dl.innerHTML = data.titles.map(t => `<option value="${t}"></option>`).join('');
 
       if (data.coverLocalPath) {
-        // Hay portada existente: mostrarla y NO buscar por API
         _showExistingCoverHint(data.coverLocalPath);
       } else {
-        // No hay portada existente: ocultar hint y dejar que TMDB busque
         _hideExistingCoverHint();
         _showDropZone();
         fetchAutoCover();
@@ -418,11 +425,9 @@ function updateDynamicFields(prefill) {
   else       { box.style.display = 'none'; box.innerHTML = ''; }
   syncStarsVisibility();
 
-  // Para tipos con hint (Serie/Libro/Cómic): el hint decide si lanzar fetchAutoCover
-  // Para tipos sin hint (Película/Teatro): lanzar fetchAutoCover directamente
   const usesHint = type.includes('Serie') || type.includes('Libro') || type.includes('mic');
   if (usesHint) {
-    fetchEntryHint(); // el hint llamará a fetchAutoCover solo si no hay portada existente
+    fetchEntryHint();
   } else {
     fetchAutoCover();
     fetchEntryHint();
@@ -499,7 +504,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const type = document.getElementById('typeSelect')?.value || '';
     const usesHint = type.includes('Serie') || type.includes('Libro') || type.includes('mic');
     if (usesHint) {
-      fetchEntryHint(); // el hint decidirá si lanzar fetchAutoCover
+      fetchEntryHint();
     } else {
       fetchAutoCover();
       fetchEntryHint();
