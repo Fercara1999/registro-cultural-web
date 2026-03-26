@@ -1,5 +1,6 @@
 package com.registrocultural.controller;
 
+import com.registrocultural.service.ComicVineService;
 import com.registrocultural.service.TmdbService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -8,21 +9,23 @@ import java.util.Map;
 
 /**
  * Endpoint REST que el frontend llama para obtener la URL de portada
- * automáticamente según el tipo y título.
+ * automaticamente segun el tipo y titulo.
  */
 @RestController
 @RequestMapping("/api/cover")
 public class CoverController {
 
     private final TmdbService tmdb;
+    private final ComicVineService comicVine;
 
-    public CoverController(TmdbService tmdb) {
+    public CoverController(TmdbService tmdb, ComicVineService comicVine) {
         this.tmdb = tmdb;
+        this.comicVine = comicVine;
     }
 
     /**
-     * GET /api/cover/search?type=Película&title=Oppenheimer&extra=Christopher+Nolan
-     * Devuelve: { "url": "https://image.tmdb.org/..." } o { "url": null }
+     * GET /api/cover/search?type=Pelicula&title=Oppenheimer&extra=Christopher+Nolan
+     * Devuelve: { "url": "https://..." } o { "url": "" }
      */
     @GetMapping("/search")
     public ResponseEntity<Map<String, String>> search(
@@ -38,8 +41,10 @@ public class CoverController {
             url = tmdb.searchSerieCover(title);
         } else if (type.contains("Libro")) {
             url = tmdb.searchBookCover(title, extra);
+        } else if (type.contains("mic") || type.equalsIgnoreCase("Comic") || type.equalsIgnoreCase("C\u00f3mic")) {
+            url = comicVine.searchComicCover(title);
         }
-        // Teatro y Cómic: sin API fiable, devuelve null
+        // Teatro: sin API fiable, devuelve vacio
 
         return ResponseEntity.ok(Map.of("url", url != null ? url : ""));
     }
