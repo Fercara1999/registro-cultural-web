@@ -78,6 +78,7 @@ public class EntryController {
             @RequestParam(required = false) Boolean seriesFinished,
             @RequestParam(required = false) MultipartFile cover,
             @RequestParam(required = false) String autoCoverUrl,
+            @RequestParam(required = false) String existingCoverPath,
             RedirectAttributes ra) {
 
         LocalDate d = date != null ? date : LocalDate.now();
@@ -88,34 +89,28 @@ public class EntryController {
         boolean multiIssue   = issues.size()   > 1;
 
         if (!multiEpisode && !multiIssue) {
-            // Caso normal: un solo registro
             Integer epInt    = episodes.isEmpty() ? null : episodes.get(0);
             Integer issueInt = issues.isEmpty()   ? null : issues.get(0);
             Entry entry = buildEntry(title, type, description, d, rating, chapters, author,
                 season, epInt, venue, director, seenInCinema, isSingleVolume,
                 comicVolume, issueInt, finished, seasonFinished, seriesFinished);
             entry.setPending(false);
-            saveCoverToEntry(entry, cover, autoCoverUrl, ra);
+            applyCover(entry, cover, autoCoverUrl, existingCoverPath, ra);
             service.save(entry);
             ra.addFlashAttribute("success", "\u2705 Entrada registrada correctamente");
 
         } else {
-            String coverPath = resolveCoverPath(cover, autoCoverUrl);
+            String coverPath = resolveCoverPath(cover, autoCoverUrl, existingCoverPath);
 
             if (multiEpisode) {
                 int lastIdx = episodes.size() - 1;
                 for (int i = 0; i < episodes.size(); i++) {
                     boolean isLast = (i == lastIdx);
-                    // finished/rating/seasonFinished/seriesFinished solo en el último episodio
                     Entry entry = buildEntry(title, type, description, d,
-                        isLast ? rating : null,
-                        chapters, author,
-                        season, episodes.get(i),
-                        venue, director, seenInCinema, isSingleVolume,
+                        isLast ? rating : null, chapters, author,
+                        season, episodes.get(i), venue, director, seenInCinema, isSingleVolume,
                         comicVolume, issues.isEmpty() ? null : issues.get(0),
-                        isLast ? finished : null,
-                        isLast ? seasonFinished : null,
-                        isLast ? seriesFinished : null);
+                        isLast ? finished : null, isLast ? seasonFinished : null, isLast ? seriesFinished : null);
                     entry.setPending(false);
                     entry.setCoverPath(coverPath);
                     service.save(entry);
@@ -124,20 +119,15 @@ public class EntryController {
                     episodes.get(0) + "\u2013" + episodes.get(lastIdx) + ")");
 
             } else {
-                // multiIssue (cómic)
                 int lastIdx = issues.size() - 1;
                 for (int i = 0; i < issues.size(); i++) {
                     boolean isLast = (i == lastIdx);
-                    // finished/rating/seriesFinished solo en el último número
                     Entry entry = buildEntry(title, type, description, d,
-                        isLast ? rating : null,
-                        chapters, author,
+                        isLast ? rating : null, chapters, author,
                         season, episodes.isEmpty() ? null : episodes.get(0),
                         venue, director, seenInCinema, isSingleVolume,
                         comicVolume, issues.get(i),
-                        isLast ? finished : null,
-                        isLast ? seasonFinished : null,
-                        isLast ? seriesFinished : null);
+                        isLast ? finished : null, isLast ? seasonFinished : null, isLast ? seriesFinished : null);
                     entry.setPending(false);
                     entry.setCoverPath(coverPath);
                     service.save(entry);
@@ -167,13 +157,14 @@ public class EntryController {
             @RequestParam(required = false) String venue,
             @RequestParam(required = false) MultipartFile cover,
             @RequestParam(required = false) String autoCoverUrl,
+            @RequestParam(required = false) String existingCoverPath,
             RedirectAttributes ra) {
 
         Entry entry = new Entry();
         entry.setTitle(title.trim()); entry.setType(type); entry.setDescription(description);
         entry.setDate(LocalDate.now()); entry.setAuthor(author); entry.setDirector(director);
         entry.setVenue(venue); entry.setPending(true);
-        saveCoverToEntry(entry, cover, autoCoverUrl, ra);
+        applyCover(entry, cover, autoCoverUrl, existingCoverPath, ra);
         service.save(entry);
         ra.addFlashAttribute("success", "\u23f3 Pendiente a\u00f1adido correctamente");
         return "redirect:/pendientes";
@@ -324,6 +315,14 @@ public class EntryController {
         if (title.isBlank()) return ResponseEntity.ok(result);
         String titleLower = title.trim().toLowerCase();
 
+        // Portada existente: buscar el último registro con ese título y coverPath
+        service.getAll().stream()
+            .filter(e -> !e.isPending())
+            .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
+            .filter(e -> e.getCoverPath() != null && !e.getCoverPath().isBlank())
+            .findFirst()
+            .ifPresent(e -> result.put("coverLocalPath", e.getCoverPath()));
+
         if (type.contains("Serie")) {
             List<Entry> entries = service.getAll().stream()
                 .filter(e -> !e.isPending())
@@ -425,17 +424,27 @@ public class EntryController {
         return e;
     }
 
-    private String resolveCoverPath(MultipartFile cover, String autoCoverUrl) {
+    /**
+     * Resuelve el coverPath final en este orden de prioridad:
+     * 1. Fichero subido manualmente
+     * 2. URL remota (TMDB/ComicVine)
+     * 3. Path de portada ya existente en la BD (reutilizar sin copiar)
+     */
+    private String resolveCoverPath(MultipartFile cover, String autoCoverUrl, String existingCoverPath) {
         if (cover != null && !cover.isEmpty()) {
             try { return service.saveCover(cover); } catch (IOException e) { /* sin portada */ }
-        } else if (autoCoverUrl != null && !autoCoverUrl.isBlank()) {
+        }
+        if (autoCoverUrl != null && !autoCoverUrl.isBlank()) {
             try { return downloadRemoteCover(autoCoverUrl, service.getCoversDir()); } catch (IOException e) { /* sin portada */ }
+        }
+        if (existingCoverPath != null && !existingCoverPath.isBlank()) {
+            return existingCoverPath;
         }
         return null;
     }
 
-    private void saveCoverToEntry(Entry entry, MultipartFile cover, String autoCoverUrl, RedirectAttributes ra) {
-        String path = resolveCoverPath(cover, autoCoverUrl);
+    private void applyCover(Entry entry, MultipartFile cover, String autoCoverUrl, String existingCoverPath, RedirectAttributes ra) {
+        String path = resolveCoverPath(cover, autoCoverUrl, existingCoverPath);
         if (path != null) entry.setCoverPath(path);
     }
 

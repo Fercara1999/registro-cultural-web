@@ -102,6 +102,7 @@ function _setDropFile(file) {
   if (fileInput) fileInput.files = dt.files;
   const hidden = document.getElementById('autoCoverUrl');
   if (hidden) hidden.value = '';
+  _clearExistingCoverPath();
   const reader = new FileReader();
   reader.onload = ev => _showDropPreview(ev.target.result);
   reader.readAsDataURL(file);
@@ -112,6 +113,7 @@ function _setDropUrl(url) {
   if (hidden) hidden.value = url;
   const fileInput = document.getElementById('coverFileInput');
   if (fileInput) fileInput.value = '';
+  _clearExistingCoverPath();
   _showDropPreview(url);
 }
 
@@ -139,12 +141,18 @@ function clearCoverDrop(event) {
   if (preview)   { preview.src = ''; preview.style.display = 'none'; }
   if (label)     label.style.display    = 'block';
   if (clearBtn)  clearBtn.style.display = 'none';
+  _clearExistingCoverPath();
   const autoCoverImg = document.getElementById('autoCoverImg');
   if (autoCoverImg && autoCoverImg.src) hidden.value = autoCoverImg.src;
 }
 
 function onCoverFileSelected(input) {
   if (input.files && input.files[0]) _setDropFile(input.files[0]);
+}
+
+function _clearExistingCoverPath() {
+  const el = document.getElementById('existingCoverPath');
+  if (el) el.value = '';
 }
 
 // ── PORTADA AUTOMÁTICA ─────────────────────────────────────────
@@ -167,7 +175,6 @@ function _doFetchCover() {
   let extra = '';
   if (type.includes('Pel')) {
     const dirEl = document.querySelector('input[name="director"]');
-    // Para búsqueda de portada usar solo el primer director
     if (dirEl) extra = dirEl.value.split(',')[0].trim();
   } else if (type.includes('Libro')) {
     const authEl = document.querySelector('input[name="author"]');
@@ -216,6 +223,46 @@ function _hideCoverPreview() {
   if (hiddenInput) hiddenInput.value = '';
 }
 
+// ── PORTADA EXISTENTE (reutilizar de registro previo) ────────────────
+function _showExistingCoverHint(coverPath) {
+  // Limpiar portada automática de TMDB si la hay
+  _hideCoverPreview();
+  const existing = document.getElementById('existingCoverPath');
+  if (existing) existing.value = coverPath;
+
+  let box = document.getElementById('existingCoverBox');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'existingCoverBox';
+    box.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;margin-top:8px;padding:10px 14px;
+                  background:var(--card);border-radius:10px;border:1.5px solid var(--border);">
+        <img id="existingCoverImg" src="" alt="portada existente"
+             style="width:90px;height:130px;object-fit:cover;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.18);"/>
+        <div style="flex:1">
+          <div style="font-size:0.85rem;font-weight:600;color:var(--text)">📂 Portada del registro anterior</div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-top:4px">Se reutilizará automáticamente.</div>
+          <button type="button" onclick="_clearExistingCover()"
+                  style="margin-top:8px;font-size:0.78rem;background:transparent;border:1px solid var(--muted);border-radius:6px;padding:2px 10px;color:var(--muted);cursor:pointer;">✖ No usar esta portada</button>
+        </div>
+      </div>`;
+    const dropZone = document.getElementById('coverDropZone');
+    if (dropZone) dropZone.parentNode.insertBefore(box, dropZone);
+  }
+  document.getElementById('existingCoverImg').src = '/covers/' + coverPath;
+  box.style.display = 'block';
+}
+
+function _hideExistingCoverHint() {
+  const box = document.getElementById('existingCoverBox');
+  if (box) box.style.display = 'none';
+  _clearExistingCoverPath();
+}
+
+function _clearExistingCover() {
+  _hideExistingCoverHint();
+}
+
 // ── HINT ─────────────────────────────────────────────────────────
 let hintDebounce = null;
 
@@ -242,6 +289,14 @@ function _doFetchHint() {
     .then(data => {
       const dl = document.getElementById('titleSuggestions');
       if (dl && data.titles) dl.innerHTML = data.titles.map(t => `<option value="${t}"></option>`).join('');
+
+      // Portada existente del registro anterior
+      if (data.coverLocalPath) {
+        _showExistingCoverHint(data.coverLocalPath);
+      } else {
+        _hideExistingCoverHint();
+      }
+
       if (type.includes('Serie')) {
         const seasonEl2 = document.querySelector('input[name="season"]');
         const episodeEl = document.querySelector('input[name="episode"]');
@@ -412,7 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const titleEl = document.querySelector('input[name="title"]');
   if (titleEl) titleEl.addEventListener('input', () => { fetchAutoCover(); fetchEntryHint(); });
   const typeEl = document.getElementById('typeSelect');
-  if (typeEl) typeEl.addEventListener('change', () => { _hideCoverPreview(); setTimeout(() => { fetchAutoCover(); fetchEntryHint(); }, 300); });
+  if (typeEl) typeEl.addEventListener('change', () => { _hideCoverPreview(); _hideExistingCoverHint(); setTimeout(() => { fetchAutoCover(); fetchEntryHint(); }, 300); });
   const typeElP = document.getElementById('typeSelectPending');
   if (typeElP) typeElP.addEventListener('change', () => { _hideCoverPreview(); setTimeout(fetchAutoCover, 300); });
   initCoverDropZone();
