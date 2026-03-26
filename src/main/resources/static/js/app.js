@@ -110,10 +110,8 @@ function _doFetchCover() {
 }
 
 function _showCoverPreview(url) {
-  // Actualizar el campo hidden fijo del form
   const hiddenInput = document.getElementById('autoCoverUrl');
   if (hiddenInput) hiddenInput.value = url;
-
   let box = document.getElementById('autoCoverBox');
   if (!box) {
     box = document.createElement('div');
@@ -130,7 +128,6 @@ function _showCoverPreview(url) {
                   style="margin-top:8px;font-size:0.78rem;background:transparent;border:1px solid var(--muted);border-radius:6px;padding:2px 10px;color:var(--muted);cursor:pointer;">✖ No usar esta portada</button>
         </div>
       </div>`;
-    // Insertar el preview antes del input de fichero
     const fileGroup = document.querySelector('input[type="file"]')?.closest('.form-group');
     if (fileGroup) fileGroup.parentNode.insertBefore(box, fileGroup);
   }
@@ -141,9 +138,51 @@ function _showCoverPreview(url) {
 function _hideCoverPreview() {
   const box = document.getElementById('autoCoverBox');
   if (box) box.style.display = 'none';
-  // Limpiar el campo hidden fijo
   const hiddenInput = document.getElementById('autoCoverUrl');
   if (hiddenInput) hiddenInput.value = '';
+}
+
+// ── HINT: sugerencia de siguiente episodio/capítulo ──────────────────
+let hintDebounce = null;
+
+function fetchEntryHint() {
+  clearTimeout(hintDebounce);
+  hintDebounce = setTimeout(_doFetchHint, 500);
+}
+
+function _doFetchHint() {
+  const titleEl = document.querySelector('input[name="title"]');
+  const typeEl  = document.getElementById('typeSelect');
+  if (!titleEl || !typeEl) return;
+  const title = titleEl.value.trim();
+  const type  = typeEl.value;
+  if (!type || (!type.includes('Serie') && !type.includes('Libro') && !type.includes('mic'))) return;
+
+  fetch('/api/entry/hint?' + new URLSearchParams({ title, type }))
+    .then(r => r.json())
+    .then(data => {
+      // Actualizar datalist de títulos
+      const dl = document.getElementById('titleSuggestions');
+      if (dl && data.titles) {
+        dl.innerHTML = data.titles.map(t => `<option value="${t}"></option>`).join('');
+      }
+      // Solo aplicar sugerencias de campos si el título coincide exacto
+      if (type.includes('Serie')) {
+        const seasonEl  = document.querySelector('input[name="season"]');
+        const episodeEl = document.querySelector('input[name="episode"]');
+        if (seasonEl  && data.season  != null) seasonEl.value  = data.season;
+        if (episodeEl && data.episode != null) episodeEl.value = data.episode;
+      } else if (type.includes('Libro')) {
+        const chapEl  = document.querySelector('input[name="chapters"]');
+        const authEl  = document.querySelector('input[name="author"]');
+        if (chapEl  && data.chapters != null) chapEl.value  = data.chapters;
+        if (authEl  && data.author   != null && authEl.value === '') authEl.value = data.author;
+      } else if (type.includes('mic')) {
+        const volEl = document.querySelector('input[name="comicVolume"]');
+        if (volEl && data.comicVolume != null) volEl.value = data.comicVolume;
+      }
+    })
+    .catch(() => {});
 }
 
 // ── CAMPOS DINÁMICOS (formulario REGISTRAR) ────────────────────────
@@ -158,51 +197,59 @@ function updateDynamicFields(prefill) {
   if (type.includes('Libro')) {
     html = `
       <div class="form-row">
-        <div class="form-group flex-grow"><label>✍️ Autor</label><input type="text" name="author" ${fs} value="${d.author||''}" oninput="fetchAutoCover()"/></div>
-        <div class="form-group"><label>📖 Capítulo leído</label><input type="number" name="chapters" ${fs} min="1" value="${d.chapters||''}"/></div>
+        <div class="form-group flex-grow"><label>\u270d\ufe0f Autor</label><input type="text" name="author" ${fs} value="${d.author||''}" oninput="fetchAutoCover()"/></div>
+        <div class="form-group"><label>\ud83d\udcd6 Cap\u00edtulo le\u00eddo</label><input type="number" name="chapters" ${fs} min="1" value="${d.chapters||''}"/></div>
       </div>
-      <div class="check-row"><label><input type="checkbox" name="finished" value="true" ${d.finished=='true'?'checked':''} onchange="syncStarsVisibility()"/> 📘 Libro terminado</label></div>`;
+      <div class="check-row"><label><input type="checkbox" name="finished" value="true" ${d.finished=='true'?'checked':''} onchange="syncStarsVisibility()"/> \ud83d\udcd8 Libro terminado</label></div>`;
   } else if (type.includes('Serie')) {
     html = `
       <div class="form-row">
-        <div class="form-group"><label>📺 Temporada</label><input type="number" name="season" ${fs} min="1" value="${d.season||''}"/></div>
-        <div class="form-group"><label>🎞️ Capítulo</label><input type="number" name="episode" ${fs} min="1" value="${d.episode||''}"/></div>
+        <div class="form-group"><label>\ud83d\udcfa Temporada</label><input type="number" name="season" ${fs} min="1" value="${d.season||''}"/></div>
+        <div class="form-group"><label>\ud83c\udf9e\ufe0f Cap\u00edtulo</label><input type="number" name="episode" ${fs} min="1" value="${d.episode||''}"/></div>
       </div>
       <div class="check-row">
-        <label><input type="checkbox" name="seasonFinished" value="true" ${d.seasonFinished=='true'?'checked':''} onchange="syncStarsVisibility()"/> 🌟 Fin de temporada</label>
-        <label><input type="checkbox" name="seriesFinished" value="true" ${d.seriesFinished=='true'?'checked':''} onchange="syncStarsVisibility()"/> 🏆 Serie terminada</label>
+        <label><input type="checkbox" name="seasonFinished" value="true" ${d.seasonFinished=='true'?'checked':''} onchange="syncStarsVisibility()"/> \ud83c\udf1f Fin de temporada</label>
+        <label><input type="checkbox" name="seriesFinished" value="true" ${d.seriesFinished=='true'?'checked':''} onchange="syncStarsVisibility()"/> \ud83c\udfc6 Serie terminada</label>
       </div>`;
   } else if (type.includes('Pel')) {
     html = `
       <div class="form-row">
-        <div class="form-group flex-grow"><label>🎬 Director</label><input type="text" name="director" ${fs} value="${d.director||''}" oninput="fetchAutoCover()"/></div>
+        <div class="form-group flex-grow"><label>\ud83c\udfac Director</label><input type="text" name="director" ${fs} value="${d.director||''}" oninput="fetchAutoCover()"/></div>
       </div>
-      <div class="check-row"><label><input type="checkbox" name="seenInCinema" value="true" ${d.seenInCinema=='true'?'checked':''}/> 🎫 Vista en el cine</label></div>`;
+      <div class="check-row"><label><input type="checkbox" name="seenInCinema" value="true" ${d.seenInCinema=='true'?'checked':''}/> \ud83c\udfab Vista en el cine</label></div>`;
   } else if (type.includes('Teatro')) {
     html = `
       <div class="form-row">
-        <div class="form-group flex-grow"><label>🎤 Lugar</label><input type="text" name="venue" ${fs} value="${d.venue||''}"/></div>
+        <div class="form-group flex-grow"><label>\ud83c\udfa4 Lugar</label><input type="text" name="venue" ${fs} value="${d.venue||''}"/></div>
       </div>`;
   } else if (type.includes('mic')) {
     const single = d.isSingleVolume === 'true';
     html = `
       <div class="check-row" style="margin-bottom:10px">
-        <label><input type="checkbox" name="isSingleVolume" id="singleVol" value="true" ${single?'checked':''} onchange="toggleComicFields()"/> ¿Es tomo único?</label>
+        <label><input type="checkbox" name="isSingleVolume" id="singleVol" value="true" ${single?'checked':''} onchange="toggleComicFields()"/> \u00bfEs tomo \u00fanico?</label>
       </div>
       <div id="comicNumRow" class="form-row" style="display:${single?'none':'flex'}">
-        <div class="form-group"><label>📕 Nº tomo</label><input type="number" name="comicVolume" ${fs} min="1" value="${d.comicVolume||''}" oninput="fetchAutoCover()"/></div>
-        <div class="form-group"><label>📖 Nº serie</label><input type="number" name="comicIssue" ${fs} min="1" value="${d.comicIssue||''}"/></div>
+        <div class="form-group"><label>\ud83d\udcd5 N\u00ba tomo</label><input type="number" name="comicVolume" ${fs} min="1" value="${d.comicVolume||''}" oninput="fetchAutoCover()"/></div>
+        <div class="form-group"><label>\ud83d\udcd6 N\u00ba serie</label><input type="number" name="comicIssue" ${fs} min="1" value="${d.comicIssue||''}"/></div>
       </div>
       <div id="comicChecks" class="check-row" style="display:${single?'none':'flex'}">
-        <label><input type="checkbox" name="finished" value="true" ${d.finished=='true'?'checked':''} onchange="syncStarsVisibility()"/> 📘 Tomo terminado</label>
-        <label><input type="checkbox" name="seriesFinished" value="true" ${d.seriesFinished=='true'?'checked':''} onchange="syncStarsVisibility()"/> 🏆 Serie terminada</label>
+        <label><input type="checkbox" name="finished" value="true" ${d.finished=='true'?'checked':''} onchange="syncStarsVisibility()"/> \ud83d\udcd8 Tomo terminado</label>
+        <label><input type="checkbox" name="seriesFinished" value="true" ${d.seriesFinished=='true'?'checked':''} onchange="syncStarsVisibility()"/> \ud83c\udfc6 Serie terminada</label>
       </div>`;
   }
-  box.innerHTML = html;
-  // NO llamar a _hideCoverPreview() aquí: el valor ya está en el campo hidden fijo del form
+
+  if (type) {
+    box.style.display = '';
+    box.innerHTML = html;
+  } else {
+    box.style.display = 'none';
+    box.innerHTML = '';
+  }
+
   syncStarsVisibility();
-  // Relanzar búsqueda de portada con el título actual
   fetchAutoCover();
+  // Lanzar hint solo si ya hay título
+  fetchEntryHint();
 }
 
 function toggleComicFields() {
@@ -223,13 +270,13 @@ function updateDynamicFieldsPending() {
   const fs = 'style="width:100%;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--input);color:var(--text);font-size:.92rem"';
   let html = '';
   if (type.includes('Libro')) {
-    html = `<div class="form-row"><div class="form-group flex-grow"><label>✍️ Autor</label><input type="text" name="author" ${fs} oninput="fetchAutoCover()"/></div></div>`;
+    html = `<div class="form-row"><div class="form-group flex-grow"><label>\u270d\ufe0f Autor</label><input type="text" name="author" ${fs} oninput="fetchAutoCover()"/></div></div>`;
   } else if (type.includes('Serie')) {
-    html = `<div class="form-row"><div class="form-group flex-grow"><label>📺 Título exacto</label><input type="text" name="seriesHint" ${fs} oninput="fetchAutoCover()"/></div></div>`;
+    html = `<div class="form-row"><div class="form-group flex-grow"><label>\ud83d\udcfa T\u00edtulo exacto</label><input type="text" name="seriesHint" ${fs} oninput="fetchAutoCover()"/></div></div>`;
   } else if (type.includes('Pel')) {
-    html = `<div class="form-row"><div class="form-group flex-grow"><label>🎬 Director</label><input type="text" name="director" ${fs} oninput="fetchAutoCover()"/></div></div>`;
+    html = `<div class="form-row"><div class="form-group flex-grow"><label>\ud83c\udfac Director</label><input type="text" name="director" ${fs} oninput="fetchAutoCover()"/></div></div>`;
   } else if (type.includes('Teatro')) {
-    html = `<div class="form-row"><div class="form-group flex-grow"><label>🎤 Lugar</label><input type="text" name="venue" ${fs}/></div></div>`;
+    html = `<div class="form-row"><div class="form-group flex-grow"><label>\ud83c\udfa4 Lugar</label><input type="text" name="venue" ${fs}/></div></div>`;
   }
   box.innerHTML = html;
 }
@@ -240,12 +287,25 @@ document.addEventListener('DOMContentLoaded', () => {
   updateDynamicFieldsPending();
   const dateIn = document.getElementById('dateInput');
   if (dateIn && !dateIn.value) dateIn.value = new Date().toISOString().split('T')[0];
+
   const titleEl = document.querySelector('input[name="title"]');
-  if (titleEl) titleEl.addEventListener('input', fetchAutoCover);
+  if (titleEl) {
+    titleEl.addEventListener('input', () => {
+      fetchAutoCover();
+      fetchEntryHint();
+    });
+  }
+
   const typeEl = document.getElementById('typeSelect');
-  if (typeEl) typeEl.addEventListener('change', () => { _hideCoverPreview(); setTimeout(fetchAutoCover, 300); });
+  if (typeEl) typeEl.addEventListener('change', () => {
+    _hideCoverPreview();
+    setTimeout(() => { fetchAutoCover(); fetchEntryHint(); }, 300);
+  });
   const typeElP = document.getElementById('typeSelectPending');
-  if (typeElP) typeElP.addEventListener('change', () => { _hideCoverPreview(); setTimeout(fetchAutoCover, 300); });
+  if (typeElP) typeElP.addEventListener('change', () => {
+    _hideCoverPreview();
+    setTimeout(fetchAutoCover, 300);
+  });
 });
 
 // ── EDIT FORM ─────────────────────────────────────────────────────
