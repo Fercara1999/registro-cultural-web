@@ -13,17 +13,46 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.*;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Controller
 public class EntryController {
 
     private final EntryService service;
+    private static final DateTimeFormatter LABEL_FMT = DateTimeFormatter.ofPattern("dd/MM");
 
     public EntryController(EntryService service) {
         this.service = service;
+    }
+
+    @GetMapping("/home")
+    public String home(Model model) {
+        List<Entry> all = service.getAll();
+
+        // Últimos 10 registros (ya vienen ordenados por fecha desc desde el servicio)
+        List<Entry> recent = all.stream().limit(10).collect(Collectors.toList());
+
+        // Semana actual: lunes-domingo de la semana en curso
+        LocalDate today   = LocalDate.now();
+        LocalDate monday  = today.with(DayOfWeek.MONDAY);
+        LocalDate sunday  = today.with(DayOfWeek.SUNDAY);
+
+        List<Entry> week = all.stream()
+            .filter(e -> e.getDate() != null
+                && !e.getDate().isBefore(monday)
+                && !e.getDate().isAfter(sunday))
+            .collect(Collectors.toList());
+
+        model.addAttribute("recentEntries", recent);
+        model.addAttribute("weekEntries",   week);
+        model.addAttribute("weekStart",     monday.format(LABEL_FMT));
+        model.addAttribute("weekEnd",       sunday.format(LABEL_FMT));
+        return "home";
     }
 
     @GetMapping("/")
@@ -77,13 +106,10 @@ public class EntryController {
         entry.setSeasonFinished(seasonFinished);
         entry.setSeriesFinished(Boolean.TRUE.equals(isSingleVolume) ? null : seriesFinished);
 
-        // 1) Portada subida manualmente tiene prioridad
         if (cover != null && !cover.isEmpty()) {
             try { entry.setCoverPath(service.saveCover(cover)); }
             catch (IOException e) { ra.addFlashAttribute("error", "No se pudo guardar la portada"); }
-        }
-        // 2) Si no hay portada manual, usar la de TMDB/Google Books
-        else if (autoCoverUrl != null && !autoCoverUrl.isBlank()) {
+        } else if (autoCoverUrl != null && !autoCoverUrl.isBlank()) {
             try {
                 String filename = downloadRemoteCover(autoCoverUrl, service.getCoversDir());
                 entry.setCoverPath(filename);
@@ -195,7 +221,6 @@ public class EntryController {
         return new org.springframework.core.io.UrlResource(file.toUri());
     }
 
-    /** Descarga una imagen remota y la guarda en el directorio de portadas */
     private String downloadRemoteCover(String imageUrl, String coversDir) throws IOException {
         Path dir = Paths.get(coversDir);
         Files.createDirectories(dir);
