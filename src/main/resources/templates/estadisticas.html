@@ -11,17 +11,31 @@
 <nav class="navbar">
   <div class="nav-brand">📚 Mi Registro Cultural</div>
   <div class="nav-links">
-    <a th:href="@{/}">📝 Registrar</a>
+    <a th:href="@{/home}">🏠 Inicio</a>
+    <a th:href="@{/registrar}">📝 Registrar</a>
+    <a th:href="@{/pendientes}">⏳ Pendientes</a>
     <a th:href="@{/buscar}">🔍 Buscar</a>
     <a th:href="@{/estadisticas}" class="active">📊 Estadísticas</a>
   </div>
   <button class="theme-btn" onclick="toggleTheme()">🌙</button>
 </nav>
 <main class="main-content">
+
+  <!-- Cabecera con filtros tipo + periodo -->
   <div class="stats-header">
     <h2>📊 Estadísticas</h2>
-    <form action="/estadisticas" method="get" class="period-form">
-      <select name="period" onchange="this.form.submit()">
+    <form action="/estadisticas" method="get" class="period-form" id="statsForm">
+      <!-- Selector de tipo (izquierda) -->
+      <select name="tipo" onchange="document.getElementById('statsForm').submit()">
+        <option value="Todos"    th:selected="${selectedTipo=='Todos'}">Todos</option>
+        <option value="Libro"    th:selected="${selectedTipo=='Libro'}">📚 Libro</option>
+        <option value="Serie"    th:selected="${selectedTipo=='Serie'}">🎬 Serie</option>
+        <option value="Película" th:selected="${selectedTipo=='Película'}">🎥 Película</option>
+        <option value="Teatro"   th:selected="${selectedTipo=='Teatro'}">🎭 Teatro</option>
+        <option value="Cómic"    th:selected="${selectedTipo=='Cómic'}">💭 Cómic</option>
+      </select>
+      <!-- Selector de periodo (derecha) -->
+      <select name="period" onchange="document.getElementById('statsForm').submit()">
         <option value="semana" th:selected="${period=='semana'}">Esta semana</option>
         <option value="mes"    th:selected="${period=='mes'}">Este mes</option>
         <option value="anio"   th:selected="${period=='anio'}">Este año</option>
@@ -30,14 +44,57 @@
     </form>
   </div>
 
-  <!-- KPIs -->
+  <!-- KPIs generales -->
   <div class="kpi-row">
     <div class="kpi kpi-accent">  <span class="kpi-icon">📚</span><span class="kpi-val" th:text="${total}">0</span>  <span class="kpi-lbl">en periodo</span></div>
     <div class="kpi kpi-accent2"> <span class="kpi-icon">📋</span><span class="kpi-val" th:text="${totalAll}">0</span><span class="kpi-lbl">total histórico</span></div>
-    <div class="kpi kpi-success"> <span class="kpi-icon">📖</span><span class="kpi-val" th:text="${libros}">0</span>  <span class="kpi-lbl">libros</span></div>
-    <div class="kpi kpi-warn">    <span class="kpi-icon">🎥</span><span class="kpi-val" th:text="${peliculas}">0</span><span class="kpi-lbl">películas</span></div>
-    <div class="kpi kpi-purple">  <span class="kpi-icon">💭</span><span class="kpi-val" th:text="${comics}">0</span>  <span class="kpi-lbl">cómics</span></div>
-    <div class="kpi kpi-cinema">  <span class="kpi-icon">🎫</span><span class="kpi-val" th:text="${cine}">0</span>   <span class="kpi-lbl">en cine (periodo)</span></div>
+    <div class="kpi kpi-success" th:if="${selectedTipo=='Todos'}"> <span class="kpi-icon">📖</span><span class="kpi-val" th:text="${libros}">0</span>  <span class="kpi-lbl">libros</span></div>
+    <div class="kpi kpi-warn"    th:if="${selectedTipo=='Todos'}"> <span class="kpi-icon">🎥</span><span class="kpi-val" th:text="${peliculas}">0</span><span class="kpi-lbl">películas</span></div>
+    <div class="kpi kpi-purple"  th:if="${selectedTipo=='Todos'}"> <span class="kpi-icon">💭</span><span class="kpi-val" th:text="${comics}">0</span>  <span class="kpi-lbl">cómics</span></div>
+    <div class="kpi kpi-cinema"> <span class="kpi-icon">🎫</span><span class="kpi-val" th:text="${cine}">0</span>   <span class="kpi-lbl">en cine (periodo)</span></div>
+  </div>
+
+  <!-- KPIs específicos por tipo -->
+  <div class="kpi-row" th:if="${selectedTipo=='Libro'}">
+    <div class="kpi kpi-success"><span class="kpi-icon">✅</span><span class="kpi-val" th:text="${librosTerminados}">0</span><span class="kpi-lbl">terminados</span></div>
+    <div class="kpi kpi-warn">   <span class="kpi-icon">📖</span><span class="kpi-val" th:text="${librosEnCurso}">0</span>  <span class="kpi-lbl">en curso</span></div>
+    <div class="kpi kpi-accent"> <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>   <span class="kpi-lbl">nota media</span></div>
+    <div class="kpi kpi-purple"> <span class="kpi-icon">✍️</span><span class="kpi-val" th:text="${autoresDistintos}">0</span><span class="kpi-lbl">autores distintos</span></div>
+  </div>
+  <div class="kpi-row" th:if="${selectedTipo=='Serie'}">
+    <div class="kpi kpi-success"><span class="kpi-icon">✅</span><span class="kpi-val" th:text="${seriesTerminadas}">0</span><span class="kpi-lbl">terminadas</span></div>
+    <div class="kpi kpi-warn">   <span class="kpi-icon">📺</span><span class="kpi-val" th:text="${seriesEnCurso}">0</span>  <span class="kpi-lbl">en curso</span></div>
+    <div class="kpi kpi-accent"> <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>   <span class="kpi-lbl">nota media</span></div>
+  </div>
+  <div class="kpi-row" th:if="${selectedTipo=='Pel\u00edcula'}">
+    <div class="kpi kpi-cinema"><span class="kpi-icon">🎫</span><span class="kpi-val" th:text="${pelisEnCine}">0</span> <span class="kpi-lbl">en cine</span></div>
+    <div class="kpi kpi-accent"><span class="kpi-icon">📺</span><span class="kpi-val" th:text="${pelisEnCasa}">0</span><span class="kpi-lbl">en casa</span></div>
+    <div class="kpi kpi-warn">  <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>  <span class="kpi-lbl">nota media</span></div>
+  </div>
+  <div class="kpi-row" th:if="${selectedTipo=='Teatro'}">
+    <div class="kpi kpi-accent"> <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>      <span class="kpi-lbl">nota media</span></div>
+    <div class="kpi kpi-purple"><span class="kpi-icon">🎭</span><span class="kpi-val" th:text="${lugaresDistintos}">0</span><span class="kpi-lbl">lugares distintos</span></div>
+  </div>
+  <div class="kpi-row" th:if="${selectedTipo=='C\u00f3mic'}">
+    <div class="kpi kpi-success"><span class="kpi-icon">✅</span><span class="kpi-val" th:text="${comicsTerminados}">0</span><span class="kpi-lbl">terminados</span></div>
+    <div class="kpi kpi-warn">   <span class="kpi-icon">💭</span><span class="kpi-val" th:text="${comicsEnCurso}">0</span>  <span class="kpi-lbl">en curso</span></div>
+    <div class="kpi kpi-accent"> <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>   <span class="kpi-lbl">nota media</span></div>
+  </div>
+
+  <!-- Top autores (solo libros) -->
+  <div class="chart-card full-width" th:if="${selectedTipo=='Libro' and topAutores != null and !topAutores.isEmpty()}">
+    <h3>✍️ Top autores</h3>
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem;">
+      <span th:each="a : ${topAutores}" class="chip" th:text="${a}"></span>
+    </div>
+  </div>
+
+  <!-- Top lugares (solo teatro) -->
+  <div class="chart-card full-width" th:if="${selectedTipo=='Teatro' and topLugares != null and !topLugares.isEmpty()}">
+    <h3>🎭 Top lugares</h3>
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem;">
+      <span th:each="l : ${topLugares}" class="chip" th:text="${l}"></span>
+    </div>
   </div>
 
   <!-- Gráficos -->
@@ -63,10 +120,10 @@
   </div>
 
   <!-- Sección Cine -->
-  <div class="section-title">🎫 Películas vistas en el cine</div>
   <div th:if="${cinemaList != null and !cinemaList.isEmpty()}">
+    <div class="section-title">🎫 Películas vistas en el cine</div>
     <div class="chart-card full-width">
-      <h3>🎟️ Lista de películas en el cine (<span th:text="${cineTotal}">0</span> en total)</h3>
+      <h3>🏟️ Lista de películas en el cine (<span th:text="${cineTotal}">0</span> en total)</h3>
       <div class="cinema-list">
         <div th:each="e, i : ${cinemaList}" class="cinema-row" th:classappend="${i.odd ? 'odd' : ''}">
           <span class="cinema-num" th:text="${i.index + 1} + '.'">1.</span>
@@ -80,7 +137,6 @@
   </div>
   <p th:if="${cinemaList == null or cinemaList.isEmpty()}" class="empty-msg">📭 No hay películas registradas en el cine</p>
 
-  <!-- Datos para Chart.js -->
   <script th:inline="javascript">
     const porTipo  = /*[[${porTipo}]]*/ {};
     const porMes   = /*[[${porMes}]]*/ {};

@@ -1,4 +1,4 @@
-// ── TEMA ────────────────────────────────────────────────────────────
+// ── TEMA ──────────────────────────────────────────────────────────
 function toggleTheme() {
   const body = document.body;
   const isDark = body.getAttribute('data-theme') === 'dark';
@@ -16,7 +16,7 @@ function toggleTheme() {
   }
 })();
 
-// ── ESTRELLAS ────────────────────────────────────────────────────────
+// ── ESTRELLAS (se muestran/ocultan según checkbox terminado) ────────────
 function initStars(initial) {
   const row   = document.getElementById('starRow');
   const input = document.getElementById('ratingInput');
@@ -42,9 +42,47 @@ function initStars(initial) {
     });
   }
 }
-document.addEventListener('DOMContentLoaded', () => initStars());
 
-// ── PORTADA AUTOMÁTICA ──────────────────────────────────────────────────
+/** Muestra u oculta el bloque de valoración según si hay checkbox terminado marcado.
+ *  Si el tipo no tiene checkbox terminado (Película, Teatro), siempre visible. */
+function syncStarsVisibility() {
+  const ratingBlock = document.getElementById('ratingBlock');
+  if (!ratingBlock) return;
+  // Checkboxes que "habilitan" la valoración
+  const finishedCb     = document.querySelector('input[name="finished"]');
+  const seriesFinCb    = document.querySelector('input[name="seriesFinished"]');
+  const seasonFinCb    = document.querySelector('input[name="seasonFinished"]');
+  const hasDoneCheckbox = finishedCb || seriesFinCb || seasonFinCb;
+  if (!hasDoneCheckbox) {
+    // Tipos sin checkbox (Película, Teatro): siempre visible
+    ratingBlock.style.display = '';
+    return;
+  }
+  const done = (finishedCb?.checked) || (seriesFinCb?.checked) || (seasonFinCb?.checked);
+  ratingBlock.style.display = done ? '' : 'none';
+  if (!done) {
+    // Resetear valoración al ocultar
+    const input = document.getElementById('ratingInput');
+    const label = document.getElementById('ratingVal');
+    if (input) input.value = 0;
+    if (label) label.textContent = 0;
+    initStars(0);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initStars();
+  syncStarsVisibility();
+  // Escuchar cambios en checkboxes del DOM y de futuros campos dinámicos
+  document.addEventListener('change', e => {
+    const n = e.target?.name;
+    if (n === 'finished' || n === 'seriesFinished' || n === 'seasonFinished') {
+      syncStarsVisibility();
+    }
+  });
+});
+
+// ── PORTADA AUTOMÁTICA ───────────────────────────────────────────────
 let coverDebounce = null;
 
 function fetchAutoCover() {
@@ -83,14 +121,16 @@ function _showCoverPreview(url) {
     box = document.createElement('div');
     box.id = 'autoCoverBox';
     box.innerHTML = `
-      <div style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 12px;
+      <div style="display:flex;align-items:center;gap:12px;margin-top:8px;padding:10px 14px;
                   background:var(--card);border-radius:10px;border:1.5px solid var(--accent);">
-        <img id="autoCoverImg" src="" alt="portada" style="width:60px;height:88px;object-fit:cover;border-radius:6px;"/>
+        <img id="autoCoverImg" src="" alt="portada"
+             style="width:90px;height:130px;object-fit:cover;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.18);"/>
         <div style="flex:1">
-          <div style="font-size:0.82rem;font-weight:600;color:var(--accent)">🎨 Portada encontrada automáticamente</div>
-          <div style="font-size:0.76rem;color:var(--muted);margin-top:2px">Se usará esta imagen.</div>
+          <div style="font-size:0.85rem;font-weight:600;color:var(--accent)">🎨 Portada encontrada automáticamente</div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-top:4px">Se usará esta imagen al guardar.</div>
           <input type="hidden" name="autoCoverUrl" id="autoCoverUrl" value=""/>
-          <button type="button" onclick="_hideCoverPreview()" style="margin-top:6px;font-size:0.75rem;background:transparent;border:none;color:var(--muted);cursor:pointer;">✖ No usar esta portada</button>
+          <button type="button" onclick="_hideCoverPreview()"
+                  style="margin-top:8px;font-size:0.78rem;background:transparent;border:1px solid var(--muted);border-radius:6px;padding:2px 10px;color:var(--muted);cursor:pointer;">✖ No usar esta portada</button>
         </div>
       </div>`;
     const fileGroup = document.querySelector('input[type="file"]')?.closest('.form-group');
@@ -106,7 +146,7 @@ function _hideCoverPreview() {
   if (box) { box.style.display = 'none'; const inp = document.getElementById('autoCoverUrl'); if (inp) inp.value = ''; }
 }
 
-// ── CAMPOS DINÁMICOS (formulario REGISTRAR) ───────────────────────────────
+// ── CAMPOS DINÁMICOS (formulario REGISTRAR) ──────────────────────────────
 function updateDynamicFields(prefill) {
   const sel = document.getElementById('typeSelect');
   const box = document.getElementById('dynamicFields');
@@ -121,7 +161,7 @@ function updateDynamicFields(prefill) {
         <div class="form-group flex-grow"><label>✍️ Autor</label><input type="text" name="author" ${fs} value="${d.author||''}" oninput="fetchAutoCover()"/></div>
         <div class="form-group"><label>📖 Capítulo leído</label><input type="number" name="chapters" ${fs} min="1" value="${d.chapters||''}"/></div>
       </div>
-      <div class="check-row"><label><input type="checkbox" name="finished" value="true" ${d.finished=='true'?'checked':''}/> 📘 Libro terminado</label></div>`;
+      <div class="check-row"><label><input type="checkbox" name="finished" value="true" ${d.finished=='true'?'checked':''} onchange="syncStarsVisibility()"/> 📘 Libro terminado</label></div>`;
   } else if (type.includes('Serie')) {
     html = `
       <div class="form-row">
@@ -129,8 +169,8 @@ function updateDynamicFields(prefill) {
         <div class="form-group"><label>🎞️ Capítulo</label><input type="number" name="episode" ${fs} min="1" value="${d.episode||''}"/></div>
       </div>
       <div class="check-row">
-        <label><input type="checkbox" name="seasonFinished" value="true" ${d.seasonFinished=='true'?'checked':''}/> 🌟 Fin de temporada</label>
-        <label><input type="checkbox" name="seriesFinished" value="true" ${d.seriesFinished=='true'?'checked':''}/> 🏆 Serie terminada</label>
+        <label><input type="checkbox" name="seasonFinished" value="true" ${d.seasonFinished=='true'?'checked':''} onchange="syncStarsVisibility()"/> 🌟 Fin de temporada</label>
+        <label><input type="checkbox" name="seriesFinished" value="true" ${d.seriesFinished=='true'?'checked':''} onchange="syncStarsVisibility()"/> 🏆 Serie terminada</label>
       </div>`;
   } else if (type.includes('Pel')) {
     html = `
@@ -154,12 +194,14 @@ function updateDynamicFields(prefill) {
         <div class="form-group"><label>📖 Nº serie</label><input type="number" name="comicIssue" ${fs} min="1" value="${d.comicIssue||''}"/></div>
       </div>
       <div id="comicChecks" class="check-row" style="display:${single?'none':'flex'}">
-        <label><input type="checkbox" name="finished" value="true" ${d.finished=='true'?'checked':''}/> 📘 Tomo terminado</label>
-        <label><input type="checkbox" name="seriesFinished" value="true" ${d.seriesFinished=='true'?'checked':''}/> 🏆 Serie terminada</label>
+        <label><input type="checkbox" name="finished" value="true" ${d.finished=='true'?'checked':''} onchange="syncStarsVisibility()"/> 📘 Tomo terminado</label>
+        <label><input type="checkbox" name="seriesFinished" value="true" ${d.seriesFinished=='true'?'checked':''} onchange="syncStarsVisibility()"/> 🏆 Serie terminada</label>
       </div>`;
   }
   box.innerHTML = html;
   _hideCoverPreview();
+  // Re-sincronizar visibilidad de estrellas tras regenerar campos
+  syncStarsVisibility();
 }
 
 function toggleComicFields() {
@@ -168,9 +210,10 @@ function toggleComicFields() {
   const checks = document.getElementById('comicChecks');
   if (numRow) numRow.style.display = single ? 'none' : 'flex';
   if (checks) checks.style.display = single ? 'none' : 'flex';
+  syncStarsVisibility();
 }
 
-// ── CAMPOS DINÁMICOS (formulario PENDIENTES) ──────────────────────────────
+// ── CAMPOS DINÁMICOS (formulario PENDIENTES) ─────────────────────────────
 function updateDynamicFieldsPending() {
   const sel = document.getElementById('typeSelectPending');
   const box = document.getElementById('dynamicFieldsPending');
@@ -179,32 +222,17 @@ function updateDynamicFieldsPending() {
   const fs = 'style="width:100%;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--input);color:var(--text);font-size:.92rem"';
   let html = '';
   if (type.includes('Libro')) {
-    html = `
-      <div class="form-row">
-        <div class="form-group flex-grow"><label>✍️ Autor</label><input type="text" name="author" ${fs} oninput="fetchAutoCover()"/></div>
-      </div>`;
-  } else if (type.includes('Serie')) {
-    // Series: sin temporada ni capítulo
-    html = '';
+    html = `<div class="form-row"><div class="form-group flex-grow"><label>✍️ Autor</label><input type="text" name="author" ${fs} oninput="fetchAutoCover()"/></div></div>`;
   } else if (type.includes('Pel')) {
-    html = `
-      <div class="form-row">
-        <div class="form-group flex-grow"><label>🎬 Director</label><input type="text" name="director" ${fs} oninput="fetchAutoCover()"/></div>
-      </div>`;
+    html = `<div class="form-row"><div class="form-group flex-grow"><label>🎬 Director</label><input type="text" name="director" ${fs} oninput="fetchAutoCover()"/></div></div>`;
   } else if (type.includes('Teatro')) {
-    html = `
-      <div class="form-row">
-        <div class="form-group flex-grow"><label>🎤 Lugar</label><input type="text" name="venue" ${fs}/></div>
-      </div>`;
-  } else if (type.includes('mic')) {
-    // Cómics: sin número de tomo ni serie
-    html = '';
+    html = `<div class="form-row"><div class="form-group flex-grow"><label>🎤 Lugar</label><input type="text" name="venue" ${fs}/></div></div>`;
   }
   box.innerHTML = html;
   _hideCoverPreview();
 }
 
-// ── DOMContentLoaded ──────────────────────────────────────────────────
+// ── DOMContentLoaded ────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   updateDynamicFields();
   updateDynamicFieldsPending();
@@ -218,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeElP) typeElP.addEventListener('change', () => { _hideCoverPreview(); setTimeout(fetchAutoCover, 300); });
 });
 
-// ── EDIT FORM ────────────────────────────────────────────────────────────
+// ── EDIT FORM ─────────────────────────────────────────────────────────
 function initEditForm() {
   const box = document.getElementById('dynamicFields');
   if (!box) return;

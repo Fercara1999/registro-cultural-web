@@ -50,11 +50,7 @@
         <textarea name="description" rows="3" placeholder="¿Qué te pareció?"></textarea>
       </div>
       <div class="form-row align-end">
-        <div class="form-group">
-          <label>Portada</label>
-          <input type="file" name="cover" accept="image/*" class="file-input"/>
-        </div>
-        <div class="form-group">
+        <div id="ratingBlock" class="form-group" style="display:none">
           <label>⭐ Valoración: <span id="ratingVal">0</span>/10</label>
           <div class="star-row" id="starRow"></div>
           <input type="hidden" name="rating" id="ratingInput" value="0"/>

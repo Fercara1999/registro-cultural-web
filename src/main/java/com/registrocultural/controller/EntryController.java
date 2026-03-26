@@ -30,7 +30,6 @@ public class EntryController {
         this.service = service;
     }
 
-    /** Raíz redirige a /home como página por defecto */
     @GetMapping("/")
     public String root() {
         return "redirect:/home";
@@ -94,7 +93,7 @@ public class EntryController {
         return "redirect:/registrar";
     }
 
-    // ── PENDIENTES ─────────────────────────────────────────────────
+    // ── PENDIENTES ────────────────────────────────────────────────
 
     @GetMapping("/pendientes")
     public String pendientes(Model model) {
@@ -227,8 +226,12 @@ public class EntryController {
     }
 
     @GetMapping("/estadisticas")
-    public String estadisticas(@RequestParam(required = false, defaultValue = "mes") String period, Model model) {
-        model.addAllAttributes(service.getStats(period));
+    public String estadisticas(
+            @RequestParam(required = false, defaultValue = "mes") String period,
+            @RequestParam(required = false, defaultValue = "Todos") String tipo,
+            Model model) {
+        model.addAllAttributes(service.getStats(period, tipo));
+        model.addAttribute("selectedTipo", tipo);
         return "estadisticas";
     }
 
@@ -239,7 +242,7 @@ public class EntryController {
         return new org.springframework.core.io.UrlResource(file.toUri());
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────
 
     private Entry buildEntry(String title, String type, String description, LocalDate date,
             Integer rating, Integer chapters, String author, Integer season, Integer episode,
