@@ -20,8 +20,9 @@ public class TmdbService {
     private static final String IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
     private static final String BOOKS_URL  = "https://www.googleapis.com/books/v1";
 
-    // Leer directamente la variable de entorno, sin pasar por application.properties
-    @Value("#{systemEnvironment['TMDB_BEARER_TOKEN'] ?: ''}")
+    @Value("${tmdb.bearer-token:}")
+    private String bearerTokenFromProps;
+
     private String bearerToken;
 
     private final WebClient webClient;
@@ -33,21 +34,40 @@ public class TmdbService {
 
     @PostConstruct
     public void init() {
+        // Intento 1: desde application.properties -> variable de entorno
+        bearerToken = bearerTokenFromProps;
+
+        // Intento 2: directamente con System.getenv si lo anterior falla
         if (bearerToken == null || bearerToken.isBlank()) {
-            log.warn("[TMDB] ADVERTENCIA: TMDB_BEARER_TOKEN no encontrado en variables de entorno");
+            bearerToken = System.getenv("TMDB_BEARER_TOKEN");
+            if (bearerToken != null && !bearerToken.isBlank()) {
+                log.info("[TMDB] Token obtenido via System.getenv");
+            }
         } else {
-            log.info("[TMDB] Token cargado correctamente (primeros 10 chars: {}...)", bearerToken.substring(0, Math.min(10, bearerToken.length())));
+            log.info("[TMDB] Token obtenido via application.properties");
+        }
+
+        // Diagnóstico completo al arrancar
+        if (bearerToken == null || bearerToken.isBlank()) {
+            log.warn("[TMDB] ADVERTENCIA: TMDB_BEARER_TOKEN vacio por todas las vias");
+            log.warn("[TMDB] Variables de entorno disponibles con prefijo TMDB: {}",
+                System.getenv().keySet().stream()
+                    .filter(k -> k.startsWith("TMDB"))
+                    .toList());
+        } else {
+            log.info("[TMDB] Token cargado OK (primeros 10 chars: {}...)",
+                bearerToken.substring(0, Math.min(10, bearerToken.length())));
         }
     }
 
     /** Busca portada de película en TMDB. Devuelve URL completa o null. */
     public String searchMovieCover(String title) {
         if (bearerToken == null || bearerToken.isBlank()) {
-            log.warn("[TMDB] bearerToken está vacío - no se puede buscar portada de película");
+            log.warn("[TMDB] bearerToken vacio - no se puede buscar portada de pelicula");
             return null;
         }
         try {
-            log.info("[TMDB] Buscando película: '{}'", title);
+            log.info("[TMDB] Buscando pelicula: '{}'", title);
             String json = webClient.get()
                 .uri(BASE_URL + "/search/movie?query={q}&language=es-ES&page=1", title)
                 .header("Authorization", "Bearer " + bearerToken)
@@ -55,13 +75,13 @@ public class TmdbService {
                 .bodyToMono(String.class)
                 .block();
             String result = extractPosterPath(json);
-            log.info("[TMDB] Resultado película '{}': {}", title, result != null ? result : "sin resultado");
+            log.info("[TMDB] Resultado pelicula '{}': {}", title, result != null ? result : "sin resultado");
             return result;
         } catch (WebClientResponseException e) {
-            log.error("[TMDB] Error HTTP {} buscando película '{}': {}", e.getStatusCode(), title, e.getResponseBodyAsString());
+            log.error("[TMDB] Error HTTP {} buscando pelicula '{}': {}", e.getStatusCode(), title, e.getResponseBodyAsString());
             return null;
         } catch (Exception e) {
-            log.error("[TMDB] Error buscando película '{}': {}", title, e.getMessage());
+            log.error("[TMDB] Error buscando pelicula '{}': {}", title, e.getMessage());
             return null;
         }
     }
@@ -69,7 +89,7 @@ public class TmdbService {
     /** Busca portada de serie en TMDB. Devuelve URL completa o null. */
     public String searchSerieCover(String title) {
         if (bearerToken == null || bearerToken.isBlank()) {
-            log.warn("[TMDB] bearerToken está vacío - no se puede buscar portada de serie");
+            log.warn("[TMDB] bearerToken vacio - no se puede buscar portada de serie");
             return null;
         }
         try {
