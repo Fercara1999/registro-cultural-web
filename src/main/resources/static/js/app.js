@@ -72,6 +72,16 @@ document.addEventListener('DOMContentLoaded', () => {
   initCoverDropZone();
 });
 
+// ── helpers drop zone visibility ────────────────────────────────
+function _showDropZone() {
+  const wrap = document.getElementById('coverDropZone')?.parentElement;
+  if (wrap) wrap.style.display = '';
+}
+function _hideDropZone() {
+  const wrap = document.getElementById('coverDropZone')?.parentElement;
+  if (wrap) wrap.style.display = 'none';
+}
+
 // ── COVER DROP ZONE ────────────────────────────────────────────
 function initCoverDropZone() {
   const zone = document.getElementById('coverDropZone');
@@ -164,6 +174,10 @@ function fetchAutoCover() {
 }
 
 function _doFetchCover() {
+  // Si ya hay portada existente activa, no buscar
+  const existingPath = document.getElementById('existingCoverPath');
+  if (existingPath && existingPath.value.trim()) return;
+
   const titleEl = document.querySelector('input[name="title"]');
   const typeEl  = document.getElementById('typeSelect') || document.getElementById('typeSelectPending');
   if (!titleEl || !typeEl) return;
@@ -225,8 +239,8 @@ function _hideCoverPreview() {
 
 // ── PORTADA EXISTENTE (reutilizar de registro previo) ────────────────
 function _showExistingCoverHint(coverPath) {
-  // Limpiar portada automática de TMDB si la hay
   _hideCoverPreview();
+  _hideDropZone();  // ocultar zona de drag & drop
   const existing = document.getElementById('existingCoverPath');
   if (existing) existing.value = coverPath;
 
@@ -261,6 +275,8 @@ function _hideExistingCoverHint() {
 
 function _clearExistingCover() {
   _hideExistingCoverHint();
+  _showDropZone();      // volver a mostrar la zona de arrastre
+  fetchAutoCover();     // relanzar búsqueda automática de TMDB
 }
 
 // ── HINT ─────────────────────────────────────────────────────────
@@ -290,11 +306,11 @@ function _doFetchHint() {
       const dl = document.getElementById('titleSuggestions');
       if (dl && data.titles) dl.innerHTML = data.titles.map(t => `<option value="${t}"></option>`).join('');
 
-      // Portada existente del registro anterior
       if (data.coverLocalPath) {
         _showExistingCoverHint(data.coverLocalPath);
       } else {
         _hideExistingCoverHint();
+        _showDropZone();
       }
 
       if (type.includes('Serie')) {
@@ -396,7 +412,6 @@ function updateDynamicFields(prefill) {
   fetchEntryHint();
 }
 
-/** Preview en tiempo real para capítulos de serie */
 function previewEpisodes() {
   const input   = document.getElementById('episodeInput');
   const preview = document.getElementById('episodePreview');
@@ -406,7 +421,6 @@ function previewEpisodes() {
   preview.textContent = `ℹ️ Se crearán ${nums.length} registros: cap. ${nums.join(', ')}`;
 }
 
-/** Preview en tiempo real para nº serie de cómic */
 function previewComicIssues() {
   const input   = document.getElementById('comicIssueInput');
   const preview = document.getElementById('comicIssuePreview');
@@ -416,7 +430,6 @@ function previewComicIssues() {
   preview.textContent = `ℹ️ Se crearán ${nums.length} registros: nº ${nums.join(', ')}`;
 }
 
-/** Parsea "3", "3-5", "3,4,5" → [3,4,5] */
 function parseIssueRange(val) {
   if (!val || !val.trim()) return [];
   val = val.trim();
@@ -467,7 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const titleEl = document.querySelector('input[name="title"]');
   if (titleEl) titleEl.addEventListener('input', () => { fetchAutoCover(); fetchEntryHint(); });
   const typeEl = document.getElementById('typeSelect');
-  if (typeEl) typeEl.addEventListener('change', () => { _hideCoverPreview(); _hideExistingCoverHint(); setTimeout(() => { fetchAutoCover(); fetchEntryHint(); }, 300); });
+  if (typeEl) typeEl.addEventListener('change', () => { _hideCoverPreview(); _hideExistingCoverHint(); _showDropZone(); setTimeout(() => { fetchAutoCover(); fetchEntryHint(); }, 300); });
   const typeElP = document.getElementById('typeSelectPending');
   if (typeElP) typeElP.addEventListener('change', () => { _hideCoverPreview(); setTimeout(fetchAutoCover, 300); });
   initCoverDropZone();
