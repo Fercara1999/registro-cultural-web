@@ -76,40 +76,21 @@ document.addEventListener('DOMContentLoaded', () => {
 function initCoverDropZone() {
   const zone = document.getElementById('coverDropZone');
   if (!zone) return;
-
-  zone.addEventListener('dragover', e => {
-    e.preventDefault();
-    zone.classList.add('drag-over');
-  });
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
   zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
   zone.addEventListener('drop', e => {
     e.preventDefault();
     zone.classList.remove('drag-over');
-
-    // 1. Archivo soltado directamente (desde el explorador de archivos)
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
-      if (file.type.startsWith('image/')) {
-        _setDropFile(file);
-        return;
-      }
+      if (file.type.startsWith('image/')) { _setDropFile(file); return; }
     }
-
-    // 2. URL de imagen arrastrada desde el navegador
     const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
-    if (url && url.startsWith('http')) {
-      _setDropUrl(url);
-      return;
-    }
-
-    // 3. HTML con src (arrastrar imagen desde página)
+    if (url && url.startsWith('http')) { _setDropUrl(url); return; }
     const html = e.dataTransfer.getData('text/html');
     if (html) {
       const match = html.match(/src=["']([^"']+)["']/);
-      if (match && match[1].startsWith('http')) {
-        _setDropUrl(match[1]);
-        return;
-      }
+      if (match && match[1].startsWith('http')) { _setDropUrl(match[1]); return; }
     }
   });
 }
@@ -159,15 +140,11 @@ function clearCoverDrop(event) {
   if (label)     label.style.display    = 'block';
   if (clearBtn)  clearBtn.style.display = 'none';
   const autoCoverImg = document.getElementById('autoCoverImg');
-  if (autoCoverImg && autoCoverImg.src) {
-    hidden.value = autoCoverImg.src;
-  }
+  if (autoCoverImg && autoCoverImg.src) hidden.value = autoCoverImg.src;
 }
 
 function onCoverFileSelected(input) {
-  if (input.files && input.files[0]) {
-    _setDropFile(input.files[0]);
-  }
+  if (input.files && input.files[0]) _setDropFile(input.files[0]);
 }
 
 // ── PORTADA AUTOMÁTICA ─────────────────────────────────────────
@@ -185,8 +162,7 @@ function _doFetchCover() {
   const title = titleEl.value.trim();
   const type  = typeEl.value;
   if (title.length < 2) return;
-  const hasApi = type.includes('Pel') || type.includes('Serie')
-              || type.includes('Libro') || type.includes('mic');
+  const hasApi = type.includes('Pel') || type.includes('Serie') || type.includes('Libro') || type.includes('mic');
   if (!hasApi) return;
   let extra = '';
   if (type.includes('Pel')) {
@@ -209,7 +185,6 @@ function _showCoverPreview(url) {
   const hasManual = (fileInput && fileInput.files && fileInput.files.length > 0)
                   || document.getElementById('coverDropPreview')?.style.display === 'block';
   if (!hasManual && hiddenInput) hiddenInput.value = url;
-
   let box = document.getElementById('autoCoverBox');
   if (!box) {
     box = document.createElement('div');
@@ -240,7 +215,7 @@ function _hideCoverPreview() {
   if (hiddenInput) hiddenInput.value = '';
 }
 
-// ── HINT: sugerencia de siguiente episodio/capítulo ──────────────────
+// ── HINT ─────────────────────────────────────────────────────────
 let hintDebounce = null;
 
 function fetchEntryHint() {
@@ -255,14 +230,11 @@ function _doFetchHint() {
   const title = titleEl.value.trim();
   const type  = typeEl.value;
   if (!type || (!type.includes('Serie') && !type.includes('Libro') && !type.includes('mic'))) return;
-
   fetch('/api/entry/hint?' + new URLSearchParams({ title, type }))
     .then(r => r.json())
     .then(data => {
       const dl = document.getElementById('titleSuggestions');
-      if (dl && data.titles) {
-        dl.innerHTML = data.titles.map(t => `<option value="${t}"></option>`).join('');
-      }
+      if (dl && data.titles) dl.innerHTML = data.titles.map(t => `<option value="${t}"></option>`).join('');
       if (type.includes('Serie')) {
         const seasonEl  = document.querySelector('input[name="season"]');
         const episodeEl = document.querySelector('input[name="episode"]');
@@ -312,7 +284,7 @@ function updateDynamicFields(prefill) {
       <div class="form-row">
         <div class="form-group flex-grow"><label>\ud83c\udfac Director</label><input type="text" name="director" ${fs} value="${d.director||''}" oninput="fetchAutoCover()"/></div>
       </div>
-      <div class="check-row"><label><input type="checkbox" name="seenInCinema" value="true" ${d.seenInCinema=='true'?'checked':''}"/> \ud83c\udfab Vista en el cine</label></div>`;
+      <div class="check-row"><label><input type="checkbox" name="seenInCinema" value="true" ${d.seenInCinema=='true'?'checked':''}/> \ud83c\udfab Vista en el cine</label></div>`;
   } else if (type.includes('Teatro')) {
     html = `
       <div class="form-row">
@@ -324,9 +296,16 @@ function updateDynamicFields(prefill) {
       <div class="check-row" style="margin-bottom:10px">
         <label><input type="checkbox" name="isSingleVolume" id="singleVol" value="true" ${single?'checked':''} onchange="toggleComicFields()"/> \u00bfEs tomo \u00fanico?</label>
       </div>
-      <div id="comicNumRow" class="form-row" style="display:${single?'none':'flex'}">
-        <div class="form-group"><label>\ud83d\udcd5 N\u00ba tomo</label><input type="number" name="comicVolume" ${fs} min="1" value="${d.comicVolume||''}" oninput="fetchAutoCover()"/></div>
-        <div class="form-group"><label>\ud83d\udcd6 N\u00ba serie</label><input type="number" name="comicIssue" ${fs} min="1" value="${d.comicIssue||''}"/></div>
+      <!-- N\u00ba serie: SIEMPRE visible -->
+      <div class="form-row">
+        <div id="comicVolumeGroup" class="form-group" style="display:${single?'none':'flex'};flex-direction:column">
+          <label>\ud83d\udcd5 N\u00ba tomo</label>
+          <input type="number" name="comicVolume" ${fs} min="1" value="${d.comicVolume||''}" oninput="fetchAutoCover()"/>
+        </div>
+        <div class="form-group">
+          <label>\ud83d\udcd6 N\u00ba serie</label>
+          <input type="number" name="comicIssue" ${fs} min="1" value="${d.comicIssue||''}"/>
+        </div>
       </div>
       <div id="comicChecks" class="check-row" style="display:${single?'none':'flex'}">
         <label><input type="checkbox" name="finished" value="true" ${d.finished=='true'?'checked':''} onchange="syncStarsVisibility()"/> \ud83d\udcd8 Tomo terminado</label>
@@ -341,11 +320,12 @@ function updateDynamicFields(prefill) {
 }
 
 function toggleComicFields() {
-  const single = document.getElementById('singleVol')?.checked;
-  const numRow = document.getElementById('comicNumRow');
-  const checks = document.getElementById('comicChecks');
-  if (numRow) numRow.style.display = single ? 'none' : 'flex';
-  if (checks) checks.style.display = single ? 'none' : 'flex';
+  const single       = document.getElementById('singleVol')?.checked;
+  const volumeGroup  = document.getElementById('comicVolumeGroup');
+  const checks       = document.getElementById('comicChecks');
+  // N\u00ba tomo y checkboxes se ocultan en tomo \u00fanico; N\u00ba serie siempre visible
+  if (volumeGroup) volumeGroup.style.display = single ? 'none' : 'flex';
+  if (checks)      checks.style.display      = single ? 'none' : 'flex';
   syncStarsVisibility();
 }
 

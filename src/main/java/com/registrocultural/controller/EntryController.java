@@ -27,9 +27,7 @@ public class EntryController {
     private final EntryService service;
     private static final DateTimeFormatter LABEL_FMT = DateTimeFormatter.ofPattern("dd/MM");
 
-    public EntryController(EntryService service) {
-        this.service = service;
-    }
+    public EntryController(EntryService service) { this.service = service; }
 
     @GetMapping("/")
     public String root() { return "redirect:/home"; }
@@ -92,7 +90,7 @@ public class EntryController {
         return "redirect:/registrar";
     }
 
-    // ── PENDIENTES ────────────────────────────────────────────
+    // ── PENDIENTES ───────────────────────────────────────────
 
     @GetMapping("/pendientes")
     public String pendientes(Model model) {
@@ -113,14 +111,9 @@ public class EntryController {
             RedirectAttributes ra) {
 
         Entry entry = new Entry();
-        entry.setTitle(title.trim());
-        entry.setType(type);
-        entry.setDescription(description);
-        entry.setDate(LocalDate.now());
-        entry.setAuthor(author);
-        entry.setDirector(director);
-        entry.setVenue(venue);
-        entry.setPending(true);
+        entry.setTitle(title.trim()); entry.setType(type); entry.setDescription(description);
+        entry.setDate(LocalDate.now()); entry.setAuthor(author); entry.setDirector(director);
+        entry.setVenue(venue); entry.setPending(true);
         saveCoverToEntry(entry, cover, autoCoverUrl, ra);
         service.save(entry);
         ra.addFlashAttribute("success", "\u23f3 Pendiente a\u00f1adido correctamente");
@@ -130,9 +123,7 @@ public class EntryController {
     @PostMapping("/pendientes/marcar-visto/{id}")
     public String marcarVisto(@PathVariable Integer id, RedirectAttributes ra) {
         service.getById(id).ifPresent(e -> {
-            e.setPending(false);
-            e.setDate(LocalDate.now());
-            service.save(e);
+            e.setPending(false); e.setDate(LocalDate.now()); service.save(e);
         });
         ra.addFlashAttribute("success", "\u2705 Marcado como visto y movido a registros");
         return "redirect:/pendientes";
@@ -142,10 +133,8 @@ public class EntryController {
 
     @GetMapping("/editar/{id}")
     public String editarForm(@PathVariable Integer id, Model model) {
-        return service.getById(id).map(e -> {
-            model.addAttribute("entry", e);
-            return "editar";
-        }).orElse("redirect:/home");
+        return service.getById(id).map(e -> { model.addAttribute("entry", e); return "editar"; })
+                      .orElse("redirect:/home");
     }
 
     @PostMapping("/editar/{id}")
@@ -174,21 +163,15 @@ public class EntryController {
             RedirectAttributes ra) {
 
         service.getById(id).ifPresent(entry -> {
-            entry.setTitle(title.trim());
-            entry.setType(type);
-            entry.setDescription(description);
+            entry.setTitle(title.trim()); entry.setType(type); entry.setDescription(description);
             entry.setDate(date != null ? date : LocalDate.now());
-            entry.setRating(rating);
-            entry.setChapters(chapters);
-            entry.setAuthor(author);
-            entry.setSeason(season);
-            entry.setEpisode(episode);
-            entry.setVenue(venue);
-            entry.setDirector(director);
+            entry.setRating(rating); entry.setChapters(chapters); entry.setAuthor(author);
+            entry.setSeason(season); entry.setEpisode(episode); entry.setVenue(venue); entry.setDirector(director);
             entry.setSeenInCinema(Boolean.TRUE.equals(seenInCinema));
             entry.setIsSingleVolume(Boolean.TRUE.equals(isSingleVolume));
+            // comicVolume solo se guarda si NO es tomo único; comicIssue SIEMPRE se guarda
             entry.setComicVolume(Boolean.TRUE.equals(isSingleVolume) ? null : comicVolume);
-            entry.setComicIssue(Boolean.TRUE.equals(isSingleVolume) ? null : comicIssue);
+            entry.setComicIssue(comicIssue);
             entry.setFinished(Boolean.TRUE.equals(isSingleVolume) ? null : finished);
             entry.setSeasonFinished(seasonFinished);
             entry.setSeriesFinished(Boolean.TRUE.equals(isSingleVolume) ? null : seriesFinished);
@@ -217,10 +200,8 @@ public class EntryController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             Model model) {
         List<Entry> results = service.search(title, type, date);
-        model.addAttribute("entries",     results);
-        model.addAttribute("searchTitle", title);
-        model.addAttribute("searchType",  type);
-        model.addAttribute("searchDate",  date);
+        model.addAttribute("entries", results); model.addAttribute("searchTitle", title);
+        model.addAttribute("searchType", type); model.addAttribute("searchDate", date);
         return "buscar";
     }
 
@@ -249,21 +230,16 @@ public class EntryController {
         for (Entry entry : all) {
             String cp = entry.getCoverPath();
             if (cp != null && cp.startsWith("http")) {
-                try {
-                    String localFile = downloadRemoteCover(cp, service.getCoversDir());
-                    entry.setCoverPath(localFile);
-                    service.save(entry);
-                    fixed++;
-                } catch (IOException e) { failed++; }
+                try { entry.setCoverPath(downloadRemoteCover(cp, service.getCoversDir())); service.save(entry); fixed++; }
+                catch (IOException e) { failed++; }
             }
         }
         return ResponseEntity.ok("fix-covers completado: " + fixed + " arregladas, " + failed + " fallidas.");
     }
 
     /**
-     * GET /api/entry/hint?title=X&type=Serie|Libro|Comic
-     * Devuelve sugerencia de siguiente episodio/capítulo/tomo y autor si procede.
-     * También devuelve títulos similares para el datalist.
+     * GET /api/entry/hint?title=X&type=Y
+     * Sugerencia de siguiente episodio/cap\u00edtulo/tomo y autocompletado de t\u00edtulos.
      */
     @GetMapping("/api/entry/hint")
     @ResponseBody
@@ -273,7 +249,6 @@ public class EntryController {
 
         Map<String, Object> result = new LinkedHashMap<>();
 
-        // Sugerencias de título (datalist) para Serie, Libro y Cómic
         if (type.contains("Serie") || type.contains("Libro") || type.contains("mic")) {
             List<String> titles = service.getAll().stream()
                 .filter(e -> !e.isPending())
@@ -283,69 +258,49 @@ public class EntryController {
                 .filter(t -> t != null && !t.isBlank())
                 .distinct()
                 .filter(t -> title.isBlank() || t.toLowerCase().contains(title.toLowerCase()))
-                .sorted()
-                .limit(10)
-                .collect(Collectors.toList());
+                .sorted().limit(10).collect(Collectors.toList());
             result.put("titles", titles);
         }
 
         if (title.isBlank()) return ResponseEntity.ok(result);
-
         String titleLower = title.trim().toLowerCase();
 
         if (type.contains("Serie")) {
-            // Buscar el último registro de esta serie (no pendiente)
-            List<Entry> serieEntries = service.getAll().stream()
+            List<Entry> entries = service.getAll().stream()
                 .filter(e -> !e.isPending())
                 .filter(e -> e.getType() != null && e.getType().contains("Serie"))
                 .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
                 .filter(e -> e.getSeason() != null && e.getEpisode() != null)
-                .sorted(Comparator
-                    .comparingInt(Entry::getSeason)
-                    .thenComparingInt(Entry::getEpisode)
-                    .reversed())
+                .sorted(Comparator.comparingInt(Entry::getSeason).thenComparingInt(Entry::getEpisode).reversed())
                 .collect(Collectors.toList());
-
-            if (!serieEntries.isEmpty()) {
-                Entry last = serieEntries.get(0);
-                boolean seasonDone = Boolean.TRUE.equals(last.getSeasonFinished()) || Boolean.TRUE.equals(last.getSeriesFinished());
-                if (seasonDone) {
-                    result.put("season",  last.getSeason() + 1);
-                    result.put("episode", 1);
-                } else {
-                    result.put("season",  last.getSeason());
-                    result.put("episode", last.getEpisode() + 1);
-                }
+            if (!entries.isEmpty()) {
+                Entry last = entries.get(0);
+                boolean done = Boolean.TRUE.equals(last.getSeasonFinished()) || Boolean.TRUE.equals(last.getSeriesFinished());
+                result.put("season",  done ? last.getSeason() + 1 : last.getSeason());
+                result.put("episode", done ? 1 : last.getEpisode() + 1);
             }
         } else if (type.contains("Libro")) {
-            List<Entry> libroEntries = service.getAll().stream()
+            List<Entry> entries = service.getAll().stream()
                 .filter(e -> !e.isPending())
                 .filter(e -> e.getType() != null && e.getType().contains("Libro"))
                 .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
                 .filter(e -> e.getChapters() != null)
                 .sorted(Comparator.comparingInt(Entry::getChapters).reversed())
                 .collect(Collectors.toList());
-
-            if (!libroEntries.isEmpty()) {
-                Entry last = libroEntries.get(0);
+            if (!entries.isEmpty()) {
+                Entry last = entries.get(0);
                 result.put("chapters", last.getChapters() + 1);
-                if (last.getAuthor() != null && !last.getAuthor().isBlank()) {
-                    result.put("author", last.getAuthor());
-                }
+                if (last.getAuthor() != null && !last.getAuthor().isBlank()) result.put("author", last.getAuthor());
             }
         } else if (type.contains("mic")) {
-            List<Entry> comicEntries = service.getAll().stream()
+            List<Entry> entries = service.getAll().stream()
                 .filter(e -> !e.isPending())
                 .filter(e -> e.getType() != null && e.getType().contains("mic"))
                 .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
                 .filter(e -> e.getComicVolume() != null)
                 .sorted(Comparator.comparingInt(Entry::getComicVolume).reversed())
                 .collect(Collectors.toList());
-
-            if (!comicEntries.isEmpty()) {
-                Entry last = comicEntries.get(0);
-                result.put("comicVolume", last.getComicVolume() + 1);
-            }
+            if (!entries.isEmpty()) result.put("comicVolume", entries.get(0).getComicVolume() + 1);
         }
 
         return ResponseEntity.ok(result);
@@ -363,8 +318,9 @@ public class EntryController {
         e.setSeason(season); e.setEpisode(episode); e.setVenue(venue); e.setDirector(director);
         e.setSeenInCinema(Boolean.TRUE.equals(seenInCinema));
         e.setIsSingleVolume(Boolean.TRUE.equals(isSingleVolume));
+        // comicVolume: null si tomo único | comicIssue: SIEMPRE se guarda
         e.setComicVolume(Boolean.TRUE.equals(isSingleVolume) ? null : comicVolume);
-        e.setComicIssue(Boolean.TRUE.equals(isSingleVolume) ? null : comicIssue);
+        e.setComicIssue(comicIssue);
         e.setFinished(Boolean.TRUE.equals(isSingleVolume) ? null : finished);
         e.setSeasonFinished(seasonFinished);
         e.setSeriesFinished(Boolean.TRUE.equals(isSingleVolume) ? null : seriesFinished);
@@ -386,9 +342,7 @@ public class EntryController {
         Files.createDirectories(dir);
         HttpURLConnection conn = (HttpURLConnection) new URL(imageUrl).openConnection();
         conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-        conn.setConnectTimeout(8000);
-        conn.setReadTimeout(10000);
-        conn.connect();
+        conn.setConnectTimeout(8000); conn.setReadTimeout(10000); conn.connect();
         String ext = ".jpg";
         String contentType = conn.getContentType();
         if (contentType != null) {
@@ -397,10 +351,7 @@ public class EntryController {
             else if (contentType.contains("gif"))  ext = ".gif";
         } else {
             String path = imageUrl.split("[?#]")[0];
-            if (path.contains(".")) {
-                String candidate = path.substring(path.lastIndexOf('.'));
-                if (candidate.length() <= 5) ext = candidate;
-            }
+            if (path.contains(".")) { String c = path.substring(path.lastIndexOf('.')); if (c.length() <= 5) ext = c; }
         }
         String filename = UUID.randomUUID() + ext;
         try (InputStream in = conn.getInputStream()) {
