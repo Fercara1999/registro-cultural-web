@@ -6,7 +6,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.*;
 import java.nio.file.*;
 import java.time.LocalDate;
 import java.util.*;
@@ -14,6 +21,10 @@ import java.util.stream.Collectors;
 
 @Service
 public class EntryService {
+
+    private static final int    COVER_MAX_W   = 300;
+    private static final int    COVER_MAX_H   = 450;
+    private static final float  COVER_QUALITY = 0.75f;
 
     private final EntryRepository repo;
 
@@ -65,13 +76,92 @@ public class EntryService {
         return getAllNonPending();
     }
 
+    /**
+     * Guarda la portada redimensionada (max 300x450) y comprimida (JPEG 75%).
+     * Ahorra ~90% de espacio respecto a guardar la imagen original.
+     */
     public String saveCover(MultipartFile file) throws IOException {
         Path dir = Paths.get(coversDir);
         Files.createDirectories(dir);
-        String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
+        String filename = UUID.randomUUID() + ".jpg";
         Path dest = dir.resolve(filename);
-        Files.copy(file.getInputStream(), dest, StandardCopyOption.REPLACE_EXISTING);
+        try (InputStream in = file.getInputStream()) {
+            BufferedImage original = ImageIO.read(in);
+            if (original == null) {
+                // Formato no soportado por ImageIO: guardar tal cual
+                Files.copy(file.getInputStream(), dest, StandardCopyOption.REPLACE_EXISTING);
+                return filename;
+            }
+            BufferedImage resized = resizeCover(original);
+            writeJpeg(resized, dest, COVER_QUALITY);
+        }
         return filename;
+    }
+
+    /**
+     * Guarda una portada descargada desde URL (ya como byte[]) con la misma compresión.
+     */
+    public String saveCoverFromBytes(byte[] bytes, String ext) throws IOException {
+        Path dir = Paths.get(coversDir);
+        Files.createDirectories(dir);
+        String filename = UUID.randomUUID() + ".jpg";
+        Path dest = dir.resolve(filename);
+        try (InputStream in = new ByteArrayInputStream(bytes)) {
+            BufferedImage original = ImageIO.read(in);
+            if (original == null) {
+                Files.write(dest, bytes);
+                return filename;
+            }
+            BufferedImage resized = resizeCover(original);
+            writeJpeg(resized, dest, COVER_QUALITY);
+        }
+        return filename;
+    }
+
+    // ── helpers de imagen ────────────────────────────────────────
+
+    private BufferedImage resizeCover(BufferedImage src) {
+        int w = src.getWidth();
+        int h = src.getHeight();
+        if (w <= COVER_MAX_W && h <= COVER_MAX_H) {
+            // Ya cabe, solo convertir a RGB para JPEG
+            return toRgb(src);
+        }
+        double scale = Math.min((double) COVER_MAX_W / w, (double) COVER_MAX_H / h);
+        int nw = (int) (w * scale);
+        int nh = (int) (h * scale);
+        BufferedImage out = new BufferedImage(nw, nh, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = out.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, nw, nh);
+        g.drawImage(src, 0, 0, nw, nh, null);
+        g.dispose();
+        return out;
+    }
+
+    private BufferedImage toRgb(BufferedImage src) {
+        if (src.getType() == BufferedImage.TYPE_INT_RGB) return src;
+        BufferedImage rgb = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = rgb.createGraphics();
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, src.getWidth(), src.getHeight());
+        g.drawImage(src, 0, 0, null);
+        g.dispose();
+        return rgb;
+    }
+
+    private void writeJpeg(BufferedImage img, Path dest, float quality) throws IOException {
+        ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
+        ImageWriteParam param = writer.getDefaultWriteParam();
+        param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+        param.setCompressionQuality(quality);
+        try (ImageOutputStream ios = ImageIO.createImageOutputStream(dest.toFile())) {
+            writer.setOutput(ios);
+            writer.write(null, new IIOImage(img, null, null), param);
+        } finally {
+            writer.dispose();
+        }
     }
 
     /** Devuelve stats filtrando por periodo y opcionalmente por tipo ("Todos" = sin filtro) */
@@ -85,12 +175,10 @@ public class EntryService {
             default       -> now.withDayOfMonth(1);
         };
 
-        // Filtro por periodo
         List<Entry> byPeriod = all.stream()
             .filter(e -> !e.getDate().isBefore(from))
             .collect(Collectors.toList());
 
-        // Filtro adicional por tipo si no es "Todos"
         boolean filterTipo = tipo != null && !"Todos".equals(tipo);
         List<Entry> filtered = filterTipo
             ? byPeriod.stream().filter(e -> e.getType() != null && e.getType().contains(tipoKeyword(tipo))).collect(Collectors.toList())
@@ -115,9 +203,9 @@ public class EntryService {
         if (!filterTipo) {
             porTipo.put("Libro",    count(filtered, "Libro"));
             porTipo.put("Serie",    count(filtered, "Serie"));
-            porTipo.put("Película", count(filtered, "Pel"));
+            porTipo.put("Pel\u00edcula", count(filtered, "Pel"));
             porTipo.put("Teatro",   count(filtered, "Teatro"));
-            porTipo.put("Cómic",    count(filtered, "mic"));
+            porTipo.put("C\u00f3mic",    count(filtered, "mic"));
         } else {
             porTipo.put(tipo, (long) filtered.size());
         }
@@ -129,14 +217,13 @@ public class EntryService {
                 Collectors.counting())));
         stats.put("porMes", porMes);
 
-        String[] dias = {"Lun","Mar","Mié","Jue","Vie","Sáb","Dom"};
+        String[] dias = {"Lun","Mar","Mi\u00e9","Jue","Vie","S\u00e1b","Dom"};
         long[] porDia = new long[7];
         for (Entry e : filtered) porDia[e.getDate().getDayOfWeek().getValue() - 1]++;
         stats.put("porDia",     porDia);
         stats.put("diasLabels", dias);
         stats.put("period",     period != null ? period : "mes");
 
-        // Estadísticas específicas por tipo
         if (filterTipo) {
             stats.putAll(buildTypeStats(filtered, tipo));
         }
@@ -144,7 +231,6 @@ public class EntryService {
         return stats;
     }
 
-    /** Stats concretas según tipo seleccionado */
     private Map<String, Object> buildTypeStats(List<Entry> entries, String tipo) {
         Map<String, Object> extra = new LinkedHashMap<>();
         if ("Libro".equals(tipo)) {
@@ -162,7 +248,7 @@ public class EntryService {
             extra.put("seriesTerminadas", terminadas);
             extra.put("seriesEnCurso",    entries.size() - terminadas);
             extra.put("avgRating",        avgRating.isPresent() ? String.format("%.1f", avgRating.getAsDouble()) : "-");
-        } else if ("Película".equals(tipo)) {
+        } else if ("Pel\u00edcula".equals(tipo)) {
             long enCine = entries.stream().filter(e -> Boolean.TRUE.equals(e.getSeenInCinema())).count();
             OptionalDouble avgRating = entries.stream().filter(e -> e.getRating() != null && e.getRating() > 0).mapToInt(Entry::getRating).average();
             extra.put("pelisEnCine",      enCine);
@@ -171,10 +257,10 @@ public class EntryService {
         } else if ("Teatro".equals(tipo)) {
             OptionalDouble avgRating = entries.stream().filter(e -> e.getRating() != null && e.getRating() > 0).mapToInt(Entry::getRating).average();
             List<String> lugares = entries.stream().filter(e -> e.getVenue() != null && !e.getVenue().isBlank()).map(Entry::getVenue).distinct().sorted().collect(Collectors.toList());
-            extra.put("avgRating",      avgRating.isPresent() ? String.format("%.1f", avgRating.getAsDouble()) : "-");
+            extra.put("avgRating",        avgRating.isPresent() ? String.format("%.1f", avgRating.getAsDouble()) : "-");
             extra.put("lugaresDistintos", lugares.size());
-            extra.put("topLugares",      lugares.stream().limit(5).collect(Collectors.toList()));
-        } else if ("Cómic".equals(tipo)) {
+            extra.put("topLugares",       lugares.stream().limit(5).collect(Collectors.toList()));
+        } else if ("C\u00f3mic".equals(tipo)) {
             long terminados = entries.stream().filter(e -> Boolean.TRUE.equals(e.getFinished())).count();
             OptionalDouble avgRating = entries.stream().filter(e -> e.getRating() != null && e.getRating() > 0).mapToInt(Entry::getRating).average();
             extra.put("comicsTerminados", terminados);
@@ -188,14 +274,13 @@ public class EntryService {
         return switch (tipo) {
             case "Libro"    -> "Libro";
             case "Serie"    -> "Serie";
-            case "Película" -> "Pel";
+            case "Pel\u00edcula" -> "Pel";
             case "Teatro"   -> "Teatro";
-            case "Cómic"    -> "mic";
+            case "C\u00f3mic"    -> "mic";
             default         -> tipo;
         };
     }
 
-    // Métodos legacy
     public Map<String, Object> getStats(String period) {
         return getStats(period, "Todos");
     }
