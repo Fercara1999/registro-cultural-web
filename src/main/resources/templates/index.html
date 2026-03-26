@@ -33,6 +33,7 @@
         <div class="form-group">
           <label>Tipo</label>
           <select name="type" id="typeSelect" onchange="updateDynamicFields()" required>
+            <option value="" disabled selected>📌 Elige un tipo</option>
             <option value="📚 Libro">📚 Libro</option>
             <option value="🎬 Serie">🎬 Serie</option>
             <option value="🎥 Película">🎥 Película</option>
@@ -45,7 +46,7 @@
           <input type="date" name="date" id="dateInput" required/>
         </div>
       </div>
-      <div id="dynamicFields" class="dynamic-card"></div>
+      <div id="dynamicFields" class="dynamic-card" style="display:none"></div>
       <div class="form-group">
         <label>Descripción / Notas</label>
         <textarea name="description" rows="3" placeholder="¿Qué te pareció?"></textarea>
