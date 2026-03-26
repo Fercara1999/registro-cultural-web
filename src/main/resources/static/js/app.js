@@ -44,7 +44,7 @@ function initStars(initial) {
 }
 document.addEventListener('DOMContentLoaded', () => initStars());
 
-// ── PORTADA AUTOMÁTICA (TMDB / Google Books) ─────────────────────────
+// ── PORTADA AUTOMÁTICA (TMDB / Google Books / Comic Vine) ─────────────────────────
 let coverDebounce = null;
 
 function fetchAutoCover() {
@@ -61,8 +61,10 @@ function _doFetchCover() {
   const type  = typeEl.value;
   if (title.length < 2) return;
 
-  // Solo para tipos con API disponible
-  if (!type.includes('Pel') && !type.includes('Serie') && !type.includes('Libro')) return;
+  // Tipos con API disponible (incluyendo Cómic)
+  const hasApi = type.includes('Pel') || type.includes('Serie')
+              || type.includes('Libro') || type.includes('mic');
+  if (!hasApi) return;
 
   // extra = director para películas, autor para libros
   let extra = '';
@@ -169,7 +171,7 @@ function updateDynamicFields(prefill) {
         <label><input type="checkbox" name="isSingleVolume" id="singleVol" value="true" ${single?'checked':''} onchange="toggleComicFields()"/> ¿Es tomo único?</label>
       </div>
       <div id="comicNumRow" class="form-row" style="display:${single?'none':'flex'}">
-        <div class="form-group"><label>📕 Nº tomo</label><input type="number" name="comicVolume" ${fs} min="1" value="${d.comicVolume||''}"/></div>
+        <div class="form-group"><label>📕 Nº tomo</label><input type="number" name="comicVolume" ${fs} min="1" value="${d.comicVolume||''}" oninput="fetchAutoCover()"/></div>
         <div class="form-group"><label>📖 Nº serie</label><input type="number" name="comicIssue"  ${fs} min="1" value="${d.comicIssue||''}"/></div>
       </div>
       <div id="comicChecks" class="check-row" style="display:${single?'none':'flex'}">
