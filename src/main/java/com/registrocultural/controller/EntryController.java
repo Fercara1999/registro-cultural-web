@@ -3,6 +3,7 @@ package com.registrocultural.controller;
 import com.registrocultural.model.Entry;
 import com.registrocultural.service.EntryService;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -94,7 +95,7 @@ public class EntryController {
         return "redirect:/registrar";
     }
 
-    // ── PENDIENTES ─────────────────────────────────────────────
+    // ── PENDIENTES ────────────────────────────────────────────
 
     @GetMapping("/pendientes")
     public String pendientes(Model model) {
@@ -140,7 +141,7 @@ public class EntryController {
         return "redirect:/pendientes";
     }
 
-    // ── EDITAR / ELIMINAR ──────────────────────────────────────────
+    // ── EDITAR / ELIMINAR ─────────────────────────────────────────
 
     @GetMapping("/editar/{id}")
     public String editarForm(@PathVariable Integer id, Model model) {
@@ -243,7 +244,33 @@ public class EntryController {
         return new org.springframework.core.io.UrlResource(file.toUri());
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────
+    /**
+     * Endpoint de migración: recorre todas las entradas cuyo coverPath sea una URL
+     * remota (empieza por "http") y las re-descarga localmente con el método corregido.
+     * Usar una sola vez: GET /admin/fix-covers
+     */
+    @GetMapping("/admin/fix-covers")
+    @ResponseBody
+    public ResponseEntity<String> fixCovers() {
+        List<Entry> all = service.getAll();
+        int fixed = 0, failed = 0;
+        for (Entry entry : all) {
+            String cp = entry.getCoverPath();
+            if (cp != null && cp.startsWith("http")) {
+                try {
+                    String localFile = downloadRemoteCover(cp, service.getCoversDir());
+                    entry.setCoverPath(localFile);
+                    service.save(entry);
+                    fixed++;
+                } catch (IOException e) {
+                    failed++;
+                }
+            }
+        }
+        return ResponseEntity.ok("fix-covers completado: " + fixed + " arregladas, " + failed + " fallidas.");
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────
 
     private Entry buildEntry(String title, String type, String description, LocalDate date,
             Integer rating, Integer chapters, String author, Integer season, Integer episode,
@@ -273,32 +300,24 @@ public class EntryController {
         }
     }
 
-    /**
-     * Descarga una imagen remota y la guarda localmente.
-     * Limpia query-params antes de extraer la extensión.
-     * Si el Content-Type del servidor es image/jpeg o image/png lo usa como fallback.
-     */
     private String downloadRemoteCover(String imageUrl, String coversDir) throws IOException {
         Path dir = Paths.get(coversDir);
         Files.createDirectories(dir);
 
-        // 1. Abrir conexión para leer Content-Type
         HttpURLConnection conn = (HttpURLConnection) new URL(imageUrl).openConnection();
         conn.setRequestProperty("User-Agent", "Mozilla/5.0");
         conn.setConnectTimeout(8000);
         conn.setReadTimeout(10000);
         conn.connect();
 
-        // 2. Determinar extensión: primero por Content-Type, luego por URL sin params
         String ext = ".jpg";
         String contentType = conn.getContentType();
         if (contentType != null) {
-            if (contentType.contains("png"))  ext = ".png";
+            if (contentType.contains("png"))       ext = ".png";
             else if (contentType.contains("webp")) ext = ".webp";
             else if (contentType.contains("gif"))  ext = ".gif";
-            else ext = ".jpg"; // jpeg / octet-stream / desconocido → jpg
+            else                                   ext = ".jpg";
         } else {
-            // Fallback: extraer de la URL quitando query params y fragmentos
             String path = imageUrl.split("[?#]")[0];
             if (path.contains(".")) {
                 String candidate = path.substring(path.lastIndexOf('.'));
