@@ -15,10 +15,22 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.io.*;
-import java.nio.file.*;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalDouble;
+import java.util.TreeMap;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -191,11 +203,11 @@ public class EntryService {
 
         Map<String, Long> porTipo = new LinkedHashMap<>();
         if (!filterTipo) {
-            porTipo.put("Libro",    count(filtered, "Libro"));
-            porTipo.put("Serie",    count(filtered, "Serie"));
-            porTipo.put("Pel\u00edcula", count(filtered, "Pel"));
-            porTipo.put("Teatro",   count(filtered, "Teatro"));
-            porTipo.put("C\u00f3mic",    count(filtered, "mic"));
+            porTipo.put("Libro",       count(filtered, "Libro"));
+            porTipo.put("Serie",       count(filtered, "Serie"));
+            porTipo.put("Pel\u00edcula",    count(filtered, "Pel"));
+            porTipo.put("Teatro",      count(filtered, "Teatro"));
+            porTipo.put("C\u00f3mic",       count(filtered, "mic"));
         } else {
             porTipo.put(tipo, (long) filtered.size());
         }
@@ -262,33 +274,38 @@ public class EntryService {
 
     private String tipoKeyword(String tipo) {
         return switch (tipo) {
-            case "Libro"    -> "Libro";
-            case "Serie"    -> "Serie";
-            case "Pel\u00edcula" -> "Pel";
-            case "Teatro"   -> "Teatro";
-            case "C\u00f3mic"    -> "mic";
-            default         -> tipo;
+            case "Libro"       -> "Libro";
+            case "Serie"       -> "Serie";
+            case "Pel\u00edcula"    -> "Pel";
+            case "Teatro"      -> "Teatro";
+            case "C\u00f3mic"       -> "mic";
+            default            -> tipo;
         };
     }
 
     public Map<String, Object> getStats(String period) {
         return getStats(period, "Todos");
     }
+
     public List<String> getTitleSuggestions(String type) {
         return repo.findDistinctTitlesByType(type != null ? type : "");
     }
+
     public String getAuthorForTitle(String title) {
         List<Entry> entries = repo.findAuthorForTitle(title);
         return entries.isEmpty() ? null : entries.get(0).getAuthor();
     }
+
     public String getDirectorForTitle(String title) {
         List<Entry> entries = repo.findDirectorForTitle(title);
         return entries.isEmpty() ? null : entries.get(0).getDirector();
     }
+
     public Entry getLastSeriesEntry(String title) {
         List<Entry> entries = repo.findLastSeriesEntry(title);
         return entries.isEmpty() ? null : entries.get(0);
     }
+
     public List<Entry> getCinemaMovies() { return repo.findCinemaMovies(); }
 
     private long count(List<Entry> list, String keyword) {
