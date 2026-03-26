@@ -10,9 +10,10 @@
   <nav class="navbar">
     <div class="nav-brand">📚 Mi Registro Cultural</div>
     <div class="nav-links">
-      <a th:href="@{/}"           th:classappend="${#httpServletRequest.requestURI == '/'           ? 'active' : ''}">📝 Registrar</a>
-      <a th:href="@{/buscar}"     th:classappend="${#httpServletRequest.requestURI.startsWith('/buscar')     ? 'active' : ''}">🔍 Buscar</a>
-      <a th:href="@{/estadisticas}" th:classappend="${#httpServletRequest.requestURI.startsWith('/estadisticas') ? 'active' : ''}">📊 Estadísticas</a>
+      <a th:href="@{/}"              th:classappend="${#httpServletRequest.requestURI == '/'                 ? 'active' : ''}">📝 Registrar</a>
+      <a th:href="@{/buscar}"        th:classappend="${#httpServletRequest.requestURI.startsWith('/buscar')        ? 'active' : ''}">🔍 Buscar</a>
+      <a th:href="@{/estadisticas}"  th:classappend="${#httpServletRequest.requestURI.startsWith('/estadisticas')  ? 'active' : ''}">📊 Estadísticas</a>
+      <a th:href="@{/configuracion}" th:classappend="${#httpServletRequest.requestURI.startsWith('/configuracion') ? 'active' : ''}">⚙️ Configuración</a>
     </div>
     <button class="theme-btn" onclick="toggleTheme()">🌙</button>
   </nav>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout('Configuración', ~{::main-content})}">
+<body>
+<main-content>
+
+  <div style="max-width:720px;margin:0 auto;padding:24px 16px">
+    <h1 style="font-size:1.6rem;font-weight:700;margin-bottom:6px">⚙️ Configuración</h1>
+    <p style="color:var(--muted);margin-bottom:28px;font-size:.93rem">Herramientas de mantenimiento y exportación de datos.</p>
+
+    <!-- Info general -->
+    <div style="display:flex;gap:16px;margin-bottom:28px;flex-wrap:wrap">
+      <div class="stat-card" style="flex:1;min-width:160px">
+        <div class="stat-number" th:text="${totalEntries}">0</div>
+        <div class="stat-label">registros en BD</div>
+      </div>
+      <div class="stat-card" style="flex:1;min-width:160px">
+        <div class="stat-number" th:text="${coverCount}">0</div>
+        <div class="stat-label">portadas almacenadas</div>
+      </div>
+      <div class="stat-card" style="flex:1;min-width:160px">
+        <div class="stat-number" th:text="${coverSizeMb} + ' MB'">0 MB</div>
+        <div class="stat-label">espacio en disco</div>
+      </div>
+    </div>
+
+    <!-- Tarjeta: Optimizar portadas -->
+    <div class="card" style="margin-bottom:20px;padding:24px">
+      <div style="display:flex;align-items:flex-start;gap:16px">
+        <div style="font-size:2.4rem;line-height:1">🖼️</div>
+        <div style="flex:1">
+          <h2 style="font-size:1.1rem;font-weight:700;margin:0 0 6px">Optimizar portadas</h2>
+          <p style="color:var(--muted);font-size:.88rem;margin:0 0 16px">
+            Redimensiona y recomprime todas las portadas guardadas en disco.
+            Solo se modifica una imagen si el resultado ocupa <strong>menos</strong> que el original.
+            El proceso es irreversible, pero no afecta a la base de datos.
+          </p>
+          <form method="post" th:action="@{/configuracion/optimizar-portadas}"
+                onsubmit="return confirmOptimize()">
+            <button type="submit" class="btn-primary"
+                    style="display:inline-flex;align-items:center;gap:8px">
+              🗜️ Optimizar ahora
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tarjeta: Exportar CSV -->
+    <div class="card" style="padding:24px">
+      <div style="display:flex;align-items:flex-start;gap:16px">
+        <div style="font-size:2.4rem;line-height:1">📥</div>
+        <div style="flex:1">
+          <h2 style="font-size:1.1rem;font-weight:700;margin:0 0 6px">Descargar registros en CSV</h2>
+          <p style="color:var(--muted);font-size:.88rem;margin:0 0 6px">
+            Exporta todos los registros de la base de datos a un fichero CSV,
+            incluyendo todos los campos <strong>excepto</strong> la portada o ruta de imagen.
+            Compatible con Excel, LibreOffice Calc y Google Sheets.
+          </p>
+          <p style="color:var(--muted);font-size:.82rem;margin:0 0 16px">
+            Columnas: id · título · tipo · descripción · fecha · valoración · capítulos · autor ·
+            temporada · capítulo · lugar · director · vistaCine · tomoÚnico · numTomo · numSerie ·
+            terminado · finTemporada · serieFinalizada · pendiente
+          </p>
+          <a th:href="@{/configuracion/exportar-csv}" class="btn-primary"
+             style="display:inline-flex;align-items:center;gap:8px;text-decoration:none">
+            📄 Descargar CSV
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function confirmOptimize() {
+      return confirm('¿Optimizar todas las portadas? Esta acción es irreversible.');
+    }
+  </script>
+
+</main-content>
+</body>
+</html>
