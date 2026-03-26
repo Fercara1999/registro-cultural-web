@@ -44,7 +44,7 @@ function initStars(initial) {
 }
 document.addEventListener('DOMContentLoaded', () => initStars());
 
-// ── PORTADA AUTOMÁTICA (TMDB / Google Books / Comic Vine) ─────────────────────────
+// ── PORTADA AUTOMÁTICA ──────────────────────────────────────────────────
 let coverDebounce = null;
 
 function fetchAutoCover() {
@@ -54,19 +54,14 @@ function fetchAutoCover() {
 
 function _doFetchCover() {
   const titleEl = document.querySelector('input[name="title"]');
-  const typeEl  = document.getElementById('typeSelect');
+  const typeEl  = document.getElementById('typeSelect') || document.getElementById('typeSelectPending');
   if (!titleEl || !typeEl) return;
-
   const title = titleEl.value.trim();
   const type  = typeEl.value;
   if (title.length < 2) return;
-
-  // Tipos con API disponible (incluyendo Cómic)
   const hasApi = type.includes('Pel') || type.includes('Serie')
               || type.includes('Libro') || type.includes('mic');
   if (!hasApi) return;
-
-  // extra = director para películas, autor para libros
   let extra = '';
   if (type.includes('Pel')) {
     const dirEl = document.querySelector('input[name="director"]');
@@ -75,14 +70,10 @@ function _doFetchCover() {
     const authEl = document.querySelector('input[name="author"]');
     if (authEl) extra = authEl.value.trim();
   }
-
   const params = new URLSearchParams({ type, title, extra });
   fetch('/api/cover/search?' + params)
     .then(r => r.json())
-    .then(data => {
-      if (data.url) _showCoverPreview(data.url);
-      else          _hideCoverPreview();
-    })
+    .then(data => { if (data.url) _showCoverPreview(data.url); else _hideCoverPreview(); })
     .catch(() => {});
 }
 
@@ -97,12 +88,11 @@ function _showCoverPreview(url) {
         <img id="autoCoverImg" src="" alt="portada" style="width:60px;height:88px;object-fit:cover;border-radius:6px;"/>
         <div style="flex:1">
           <div style="font-size:0.82rem;font-weight:600;color:var(--accent)">🎨 Portada encontrada automáticamente</div>
-          <div style="font-size:0.76rem;color:var(--muted);margin-top:2px">Se usará esta imagen. Puedes subir otra manualmente para reemplazarla.</div>
+          <div style="font-size:0.76rem;color:var(--muted);margin-top:2px">Se usará esta imagen.</div>
           <input type="hidden" name="autoCoverUrl" id="autoCoverUrl" value=""/>
           <button type="button" onclick="_hideCoverPreview()" style="margin-top:6px;font-size:0.75rem;background:transparent;border:none;color:var(--muted);cursor:pointer;">✖ No usar esta portada</button>
         </div>
       </div>`;
-    // Insertar justo antes del campo de portada manual
     const fileGroup = document.querySelector('input[type="file"]')?.closest('.form-group');
     if (fileGroup) fileGroup.parentNode.insertBefore(box, fileGroup);
   }
@@ -113,25 +103,18 @@ function _showCoverPreview(url) {
 
 function _hideCoverPreview() {
   const box = document.getElementById('autoCoverBox');
-  if (box) {
-    box.style.display = 'none';
-    const inp = document.getElementById('autoCoverUrl');
-    if (inp) inp.value = '';
-  }
+  if (box) { box.style.display = 'none'; const inp = document.getElementById('autoCoverUrl'); if (inp) inp.value = ''; }
 }
 
-// ── CAMPOS DINÁMICOS ─────────────────────────────────────────────────
-const TYPES = ['Libro', 'Serie', 'Película', 'Teatro', 'Cómic'];
-
+// ── CAMPOS DINÁMICOS (formulario REGISTRAR) ───────────────────────────────
 function updateDynamicFields(prefill) {
-  const sel  = document.getElementById('typeSelect');
-  const box  = document.getElementById('dynamicFields');
+  const sel = document.getElementById('typeSelect');
+  const box = document.getElementById('dynamicFields');
   if (!sel || !box) return;
   const type = sel.value || '';
-  const d    = prefill || {};
-  const fs   = 'style="width:100%;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--input);color:var(--text);font-size:.92rem"';
-  let html   = '';
-
+  const d = prefill || {};
+  const fs = 'style="width:100%;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--input);color:var(--text);font-size:.92rem"';
+  let html = '';
   if (type.includes('Libro')) {
     html = `
       <div class="form-row">
@@ -139,7 +122,6 @@ function updateDynamicFields(prefill) {
         <div class="form-group"><label>📖 Capítulo leído</label><input type="number" name="chapters" ${fs} min="1" value="${d.chapters||''}"/></div>
       </div>
       <div class="check-row"><label><input type="checkbox" name="finished" value="true" ${d.finished=='true'?'checked':''}/> 📘 Libro terminado</label></div>`;
-
   } else if (type.includes('Serie')) {
     html = `
       <div class="form-row">
@@ -150,20 +132,17 @@ function updateDynamicFields(prefill) {
         <label><input type="checkbox" name="seasonFinished" value="true" ${d.seasonFinished=='true'?'checked':''}/> 🌟 Fin de temporada</label>
         <label><input type="checkbox" name="seriesFinished" value="true" ${d.seriesFinished=='true'?'checked':''}/> 🏆 Serie terminada</label>
       </div>`;
-
   } else if (type.includes('Pel')) {
     html = `
       <div class="form-row">
         <div class="form-group flex-grow"><label>🎬 Director</label><input type="text" name="director" ${fs} value="${d.director||''}" oninput="fetchAutoCover()"/></div>
       </div>
       <div class="check-row"><label><input type="checkbox" name="seenInCinema" value="true" ${d.seenInCinema=='true'?'checked':''}/> 🎫 Vista en el cine</label></div>`;
-
   } else if (type.includes('Teatro')) {
     html = `
       <div class="form-row">
         <div class="form-group flex-grow"><label>🎤 Lugar</label><input type="text" name="venue" ${fs} value="${d.venue||''}"/></div>
       </div>`;
-
   } else if (type.includes('mic')) {
     const single = d.isSingleVolume === 'true';
     html = `
@@ -172,10 +151,10 @@ function updateDynamicFields(prefill) {
       </div>
       <div id="comicNumRow" class="form-row" style="display:${single?'none':'flex'}">
         <div class="form-group"><label>📕 Nº tomo</label><input type="number" name="comicVolume" ${fs} min="1" value="${d.comicVolume||''}" oninput="fetchAutoCover()"/></div>
-        <div class="form-group"><label>📖 Nº serie</label><input type="number" name="comicIssue"  ${fs} min="1" value="${d.comicIssue||''}"/></div>
+        <div class="form-group"><label>📖 Nº serie</label><input type="number" name="comicIssue" ${fs} min="1" value="${d.comicIssue||''}"/></div>
       </div>
       <div id="comicChecks" class="check-row" style="display:${single?'none':'flex'}">
-        <label><input type="checkbox" name="finished"       value="true" ${d.finished=='true'?'checked':''}/> 📘 Tomo terminado</label>
+        <label><input type="checkbox" name="finished" value="true" ${d.finished=='true'?'checked':''}/> 📘 Tomo terminado</label>
         <label><input type="checkbox" name="seriesFinished" value="true" ${d.seriesFinished=='true'?'checked':''}/> 🏆 Serie terminada</label>
       </div>`;
   }
@@ -191,19 +170,55 @@ function toggleComicFields() {
   if (checks) checks.style.display = single ? 'none' : 'flex';
 }
 
+// ── CAMPOS DINÁMICOS (formulario PENDIENTES) ──────────────────────────────
+function updateDynamicFieldsPending() {
+  const sel = document.getElementById('typeSelectPending');
+  const box = document.getElementById('dynamicFieldsPending');
+  if (!sel || !box) return;
+  const type = sel.value || '';
+  const fs = 'style="width:100%;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--input);color:var(--text);font-size:.92rem"';
+  let html = '';
+  if (type.includes('Libro')) {
+    html = `
+      <div class="form-row">
+        <div class="form-group flex-grow"><label>✍️ Autor</label><input type="text" name="author" ${fs} oninput="fetchAutoCover()"/></div>
+      </div>`;
+  } else if (type.includes('Serie')) {
+    // Series: sin temporada ni capítulo
+    html = '';
+  } else if (type.includes('Pel')) {
+    html = `
+      <div class="form-row">
+        <div class="form-group flex-grow"><label>🎬 Director</label><input type="text" name="director" ${fs} oninput="fetchAutoCover()"/></div>
+      </div>`;
+  } else if (type.includes('Teatro')) {
+    html = `
+      <div class="form-row">
+        <div class="form-group flex-grow"><label>🎤 Lugar</label><input type="text" name="venue" ${fs}/></div>
+      </div>`;
+  } else if (type.includes('mic')) {
+    // Cómics: sin número de tomo ni serie
+    html = '';
+  }
+  box.innerHTML = html;
+  _hideCoverPreview();
+}
+
+// ── DOMContentLoaded ──────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   updateDynamicFields();
+  updateDynamicFieldsPending();
   const dateIn = document.getElementById('dateInput');
   if (dateIn && !dateIn.value) dateIn.value = new Date().toISOString().split('T')[0];
-  // Escuchar cambio en el título para buscar portada
   const titleEl = document.querySelector('input[name="title"]');
   if (titleEl) titleEl.addEventListener('input', fetchAutoCover);
-  // Escuchar cambio de tipo
   const typeEl = document.getElementById('typeSelect');
   if (typeEl) typeEl.addEventListener('change', () => { _hideCoverPreview(); setTimeout(fetchAutoCover, 300); });
+  const typeElP = document.getElementById('typeSelectPending');
+  if (typeElP) typeElP.addEventListener('change', () => { _hideCoverPreview(); setTimeout(fetchAutoCover, 300); });
 });
 
-// ── EDIT FORM (rellena campos con datos existentes) ──────────────────
+// ── EDIT FORM ────────────────────────────────────────────────────────────
 function initEditForm() {
   const box = document.getElementById('dynamicFields');
   if (!box) return;
@@ -212,10 +227,7 @@ function initEditForm() {
     if (!raw) return;
     const data = JSON.parse(raw);
     const sel  = document.getElementById('typeSelect');
-    if (sel) {
-      sel.value = data.type || '';
-      updateDynamicFields(data);
-    }
+    if (sel) { sel.value = data.type || ''; updateDynamicFields(data); }
     const ri = document.getElementById('ratingInput');
     if (ri) initStars(parseInt(ri.value) || 0);
   } catch(e) { console.warn('initEditForm error', e); }

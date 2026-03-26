@@ -30,6 +30,18 @@ public class EntryService {
         return repo.findAllByOrderByDateDescIdDesc();
     }
 
+    public List<Entry> getAllNonPending() {
+        return repo.findAllByOrderByDateDescIdDesc().stream()
+            .filter(e -> !e.isPending())
+            .collect(Collectors.toList());
+    }
+
+    public List<Entry> getAllPending() {
+        return repo.findAllByOrderByDateDescIdDesc().stream()
+            .filter(Entry::isPending)
+            .collect(Collectors.toList());
+    }
+
     public Optional<Entry> getById(Integer id) {
         return repo.findById(id);
     }
@@ -51,30 +63,7 @@ public class EntryService {
         if (hasTitle && hasType) return repo.findByTitleAndType(title, type);
         if (hasTitle) return repo.findByTitleContainingIgnoreCaseOrderByDateDesc(title);
         if (hasType)  return repo.findByTypeContainingOrderByDateDesc(type);
-        return repo.findAllByOrderByDateDescIdDesc();
-    }
-
-    public List<String> getTitleSuggestions(String type) {
-        return repo.findDistinctTitlesByType(type != null ? type : "");
-    }
-
-    public String getAuthorForTitle(String title) {
-        List<Entry> entries = repo.findAuthorForTitle(title);
-        return entries.isEmpty() ? null : entries.get(0).getAuthor();
-    }
-
-    public String getDirectorForTitle(String title) {
-        List<Entry> entries = repo.findDirectorForTitle(title);
-        return entries.isEmpty() ? null : entries.get(0).getDirector();
-    }
-
-    public Entry getLastSeriesEntry(String title) {
-        List<Entry> entries = repo.findLastSeriesEntry(title);
-        return entries.isEmpty() ? null : entries.get(0);
-    }
-
-    public List<Entry> getCinemaMovies() {
-        return repo.findCinemaMovies();
+        return getAllNonPending();
     }
 
     public String saveCover(MultipartFile file) throws IOException {
@@ -87,7 +76,7 @@ public class EntryService {
     }
 
     public Map<String, Object> getStats(String period) {
-        List<Entry> all = repo.findAllByOrderByDateDescIdDesc();
+        List<Entry> all = getAllNonPending();
         LocalDate now  = LocalDate.now();
         LocalDate from = switch (period != null ? period : "mes") {
             case "semana" -> now.minusDays(now.getDayOfWeek().getValue() - 1);
@@ -95,10 +84,7 @@ public class EntryService {
             case "todo"   -> LocalDate.of(2000, 1, 1);
             default       -> now.withDayOfMonth(1);
         };
-
-        List<Entry> filtered = all.stream()
-                .filter(e -> !e.getDate().isBefore(from))
-                .collect(Collectors.toList());
+        List<Entry> filtered = all.stream().filter(e -> !e.getDate().isBefore(from)).collect(Collectors.toList());
 
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("total",      filtered.size());
@@ -110,7 +96,7 @@ public class EntryService {
         stats.put("comics",     count(filtered, "mic"));
         stats.put("cine",       filtered.stream().filter(e -> Boolean.TRUE.equals(e.getSeenInCinema())).count());
         stats.put("cineTotal",  all.stream().filter(e -> Boolean.TRUE.equals(e.getSeenInCinema())).count());
-        stats.put("cinemaList", repo.findCinemaMovies());
+        stats.put("cinemaList", getAllNonPending().stream().filter(e -> Boolean.TRUE.equals(e.getSeenInCinema())).collect(Collectors.toList()));
 
         Map<String, Long> porTipo = new LinkedHashMap<>();
         porTipo.put("Libro",    count(filtered, "Libro"));
@@ -121,9 +107,9 @@ public class EntryService {
         stats.put("porTipo", porTipo);
 
         Map<String, Long> porMes = new TreeMap<>(filtered.stream().collect(
-                Collectors.groupingBy(
-                    e -> e.getDate().getYear() + "-" + String.format("%02d", e.getDate().getMonthValue()),
-                    Collectors.counting())));
+            Collectors.groupingBy(
+                e -> e.getDate().getYear() + "-" + String.format("%02d", e.getDate().getMonthValue()),
+                Collectors.counting())));
         stats.put("porMes", porMes);
 
         String[] dias = {"Lun","Mar","Mié","Jue","Vie","Sáb","Dom"};
@@ -133,6 +119,26 @@ public class EntryService {
         stats.put("diasLabels", dias);
         stats.put("period",     period != null ? period : "mes");
         return stats;
+    }
+
+    // Métodos legacy (para compatibilidad con otras partes si los usan)
+    public List<String> getTitleSuggestions(String type) {
+        return repo.findDistinctTitlesByType(type != null ? type : "");
+    }
+    public String getAuthorForTitle(String title) {
+        List<Entry> entries = repo.findAuthorForTitle(title);
+        return entries.isEmpty() ? null : entries.get(0).getAuthor();
+    }
+    public String getDirectorForTitle(String title) {
+        List<Entry> entries = repo.findDirectorForTitle(title);
+        return entries.isEmpty() ? null : entries.get(0).getDirector();
+    }
+    public Entry getLastSeriesEntry(String title) {
+        List<Entry> entries = repo.findLastSeriesEntry(title);
+        return entries.isEmpty() ? null : entries.get(0);
+    }
+    public List<Entry> getCinemaMovies() {
+        return repo.findCinemaMovies();
     }
 
     private long count(List<Entry> list, String keyword) {
