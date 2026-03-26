@@ -21,11 +21,19 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageOutputStream;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 
 @Controller
@@ -47,7 +55,6 @@ public class SettingsController {
         this.entryService    = entryService;
     }
 
-    // ── GET /configuracion ────────────────────────────────────────
     @GetMapping
     public String page(Model model) {
         long totalEntries = entryRepository.count();
@@ -69,7 +76,6 @@ public class SettingsController {
         return "configuracion";
     }
 
-    // ── POST /configuracion/optimizar-portadas ────────────────────
     @PostMapping("/optimizar-portadas")
     public String optimizarPortadas(RedirectAttributes ra) {
         Path dir = Paths.get(coversDir);
@@ -98,19 +104,18 @@ public class SettingsController {
             return "redirect:/configuracion";
         }
         if (procesadas == 0) {
-            ra.addFlashAttribute("success", "✅ Todas las portadas ya estaban optimizadas.");
+            ra.addFlashAttribute("success", "\u2705 Todas las portadas ya estaban optimizadas.");
         } else {
             double ahorroMb = (bytesAntes - bytesDespues) / 1_048_576.0;
             double anteMb   = bytesAntes  / 1_048_576.0;
             double despMb   = bytesDespues / 1_048_576.0;
             ra.addFlashAttribute("success",
-                String.format("✅ %d portadas optimizadas · %.1f MB → %.1f MB (ahorro: %.1f MB)",
+                String.format("\u2705 %d portadas optimizadas \u00b7 %.1f MB \u2192 %.1f MB (ahorro: %.1f MB)",
                     procesadas, anteMb, despMb, ahorroMb));
         }
         return "redirect:/configuracion";
     }
 
-    // ── GET /configuracion/exportar-csv ───────────────────────────
     @GetMapping("/exportar-csv")
     public ResponseEntity<byte[]> exportarCsv() throws IOException {
         List<Entry> entries = entryRepository.findAll();
@@ -157,7 +162,6 @@ public class SettingsController {
             .body(csvBytes);
     }
 
-    // ── helpers ───────────────────────────────────────────────────
     private long[] coversDirInfo(Path dir) throws IOException {
         long count = 0, size = 0;
         try (DirectoryStream<Path> s = Files.newDirectoryStream(dir, "*.{jpg,jpeg,JPG,JPEG,png,PNG,webp,WebP}")) {
@@ -166,10 +170,6 @@ public class SettingsController {
         return new long[]{count, size};
     }
 
-    /**
-     * Recomprime y redimensiona la imagen si su ancho supera OPT_MAX_W o su alto OPT_MAX_H.
-     * @return true si se procesó y se guardó una versión más pequeña.
-     */
     private boolean compressImage(Path file) throws IOException {
         long sizeBefore = Files.size(file);
         BufferedImage original = ImageIO.read(file.toFile());
@@ -195,7 +195,6 @@ public class SettingsController {
             img = toRgb(original);
         }
 
-        // Escribir en un buffer primero para comparar tamaño
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
         ImageWriteParam param = writer.getDefaultWriteParam();
@@ -208,7 +207,6 @@ public class SettingsController {
             writer.dispose();
         }
 
-        // Solo guardar si el resultado es más pequeño
         if (baos.size() < sizeBefore) {
             Files.write(file, baos.toByteArray(), StandardOpenOption.TRUNCATE_EXISTING);
             return true;
