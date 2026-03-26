@@ -12,6 +12,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @Service
 public class TmdbService {
@@ -52,24 +56,67 @@ public class TmdbService {
         }
     }
 
+    /** Devuelve solo la URL de portada de una película (compatibilidad). */
     public String searchMovieCover(String title) {
-        if (bearerToken == null || bearerToken.isBlank()) return null;
+        Map<String, String> details = searchMovieDetails(title);
+        return details.get("posterUrl");
+    }
+
+    /**
+     * Busca una película en TMDB y devuelve un mapa con:
+     *   - "posterUrl"  : URL de la imagen de portada (puede ser null)
+     *   - "director"   : nombre(s) del director separados por coma (puede ser null)
+     */
+    public Map<String, String> searchMovieDetails(String title) {
+        Map<String, String> result = new LinkedHashMap<>();
+        if (bearerToken == null || bearerToken.isBlank()) return result;
         try {
             log.info("[TMDB] Buscando pelicula: '{}'", title);
-            String json = webClient.get()
+            String searchJson = webClient.get()
                 .uri(BASE_URL + "/search/movie?query={q}&language=es-ES&page=1", title)
                 .header("Authorization", "Bearer " + bearerToken)
                 .retrieve().bodyToMono(String.class).block();
-            String result = extractPosterPath(json);
-            log.info("[TMDB] Resultado pelicula '{}': {}", title, result != null ? result : "sin resultado");
-            return result;
+
+            JsonNode root    = mapper.readTree(searchJson);
+            JsonNode results = root.path("results");
+            if (!results.isArray() || results.size() == 0) return result;
+
+            JsonNode first = results.get(0);
+            String posterPath = first.path("poster_path").asText(null);
+            if (posterPath != null && !posterPath.isBlank())
+                result.put("posterUrl", IMAGE_BASE + posterPath);
+
+            // Obtener créditos para el director
+            int movieId = first.path("id").asInt(0);
+            if (movieId > 0) {
+                try {
+                    String creditsJson = webClient.get()
+                        .uri(BASE_URL + "/movie/{id}/credits?language=es-ES", movieId)
+                        .header("Authorization", "Bearer " + bearerToken)
+                        .retrieve().bodyToMono(String.class).block();
+
+                    JsonNode crew = mapper.readTree(creditsJson).path("crew");
+                    String directors = StreamSupport.stream(crew.spliterator(), false)
+                        .filter(m -> "Director".equals(m.path("job").asText()))
+                        .map(m -> m.path("name").asText())
+                        .collect(Collectors.joining(", "));
+                    if (!directors.isBlank()) {
+                        result.put("director", directors);
+                        log.info("[TMDB] Director(es) para '{}': {}", title, directors);
+                    }
+                } catch (Exception e) {
+                    log.warn("[TMDB] No se pudieron obtener creditos para id {}: {}", movieId, e.getMessage());
+                }
+            }
+
+            log.info("[TMDB] Resultado pelicula '{}': portada={}, director={}",
+                title, result.get("posterUrl"), result.get("director"));
         } catch (WebClientResponseException e) {
             log.error("[TMDB] Error HTTP {} buscando pelicula '{}': {}", e.getStatusCode(), title, e.getResponseBodyAsString());
-            return null;
         } catch (Exception e) {
             log.error("[TMDB] Error buscando pelicula '{}': {}", title, e.getMessage());
-            return null;
         }
+        return result;
     }
 
     public String searchSerieCover(String title) {
@@ -95,11 +142,9 @@ public class TmdbService {
     /**
      * Busca portada de libro en Google Books.
      * Estrategia: primero busca con título+autor, si no hay resultado busca solo título.
-     * Sin langRestrict para no perder ediciones.
      */
     public String searchBookCover(String title, String author) {
         try {
-            // Intento 1: título + autor
             if (author != null && !author.isBlank()) {
                 String url = _googleBooksSearch(
                     "intitle:" + URLEncoder.encode(title, StandardCharsets.UTF_8)
@@ -107,11 +152,8 @@ public class TmdbService {
                 if (url != null) return url;
                 log.info("[Books] Sin resultado con autor, reintentando solo con titulo");
             }
-            // Intento 2: solo título
             String url = _googleBooksSearch("intitle:" + URLEncoder.encode(title, StandardCharsets.UTF_8));
             if (url != null) return url;
-
-            // Intento 3: búsqueda libre (más permisiva)
             url = _googleBooksSearch(URLEncoder.encode(title, StandardCharsets.UTF_8));
             log.info("[Books] Resultado final para '{}': {}", title, url != null ? url : "sin resultado");
             return url;
@@ -129,14 +171,13 @@ public class TmdbService {
             JsonNode root  = mapper.readTree(json);
             JsonNode items = root.path("items");
             if (!items.isArray() || items.size() == 0) return null;
-            // Recorrer los primeros resultados buscando uno con imagen
             for (JsonNode item : items) {
                 JsonNode img = item.path("volumeInfo").path("imageLinks");
                 String url = img.path("thumbnail").asText(null);
                 if (url == null) url = img.path("smallThumbnail").asText(null);
                 if (url != null && !url.isBlank()) {
                     url = url.replace("http://", "https://")
-                             .replaceAll("&edge=curl", ""); // quitar efecto curl
+                             .replaceAll("&edge=curl", "");
                     log.info("[Books] Portada encontrada: {}", url);
                     return url;
                 }

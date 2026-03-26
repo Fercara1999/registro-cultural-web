@@ -5,11 +5,12 @@ import com.registrocultural.service.TmdbService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
  * Endpoint REST que el frontend llama para obtener la URL de portada
- * automaticamente segun el tipo y titulo.
+ * (y datos extra como director) según el tipo y título.
  */
 @RestController
 @RequestMapping("/api/cover")
@@ -24,8 +25,9 @@ public class CoverController {
     }
 
     /**
-     * GET /api/cover/search?type=Pelicula&title=Oppenheimer&extra=Christopher+Nolan
-     * Devuelve: { "url": "https://..." } o { "url": "" }
+     * GET /api/cover/search?type=Pelicula&title=Oppenheimer&extra=
+     * Devuelve: { "url": "https://...", "director": "Christopher Nolan" }
+     * El campo "director" solo viene para películas.
      */
     @GetMapping("/search")
     public ResponseEntity<Map<String, String>> search(
@@ -33,19 +35,23 @@ public class CoverController {
             @RequestParam String title,
             @RequestParam(required = false) String extra) {
 
-        String url = null;
+        Map<String, String> response = new LinkedHashMap<>();
 
         if (type.contains("Pel")) {
-            url = tmdb.searchMovieCover(title);
+            Map<String, String> details = tmdb.searchMovieDetails(title);
+            response.put("url",      details.getOrDefault("posterUrl", ""));
+            response.put("director", details.getOrDefault("director", ""));
         } else if (type.contains("Serie")) {
-            url = tmdb.searchSerieCover(title);
+            String url = tmdb.searchSerieCover(title);
+            response.put("url", url != null ? url : "");
         } else if (type.contains("Libro")) {
-            url = tmdb.searchBookCover(title, extra);
-        } else if (type.contains("mic") || type.equalsIgnoreCase("Comic") || type.equalsIgnoreCase("C\u00f3mic")) {
-            url = comicVine.searchComicCover(title);
+            String url = tmdb.searchBookCover(title, extra);
+            response.put("url", url != null ? url : "");
+        } else if (type.contains("mic") || type.equalsIgnoreCase("Comic") || type.equalsIgnoreCase("Cómic")) {
+            String url = comicVine.searchComicCover(title);
+            response.put("url", url != null ? url : "");
         }
-        // Teatro: sin API fiable, devuelve vacio
 
-        return ResponseEntity.ok(Map.of("url", url != null ? url : ""));
+        return ResponseEntity.ok(response);
     }
 }
