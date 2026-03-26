@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Editar | Mi Registro Cultural</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}"/>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand">📚 Mi Registro Cultural</div>
+  <div class="nav-links">
+    <a th:href="@{/}">📝 Registrar</a>
+    <a th:href="@{/buscar}">🔍 Buscar</a>
+    <a th:href="@{/estadisticas}">📊 Estadísticas</a>
+  </div>
+  <button class="theme-btn" onclick="toggleTheme()">🌙</button>
+</nav>
+<main class="main-content">
+  <section class="card form-card">
+    <h2>✏️ Editar registro</h2>
+    <form th:action="@{/editar/{id}(id=${entry.id})}" method="post" enctype="multipart/form-data" id="editForm">
+
+      <div class="form-row">
+        <div class="form-group flex-grow">
+          <label>Título</label>
+          <input type="text" name="title" th:value="${entry.title}" required/>
+        </div>
+        <div class="form-group">
+          <label>Tipo</label>
+          <select name="type" id="typeSelect" onchange="updateDynamicFields()" required>
+            <option th:each="t : ${ {'📚 Libro','🎬 Serie','🎥 Película','🎭 Teatro','💭 Cómic'} }"
+                    th:value="${t}" th:text="${t}"
+                    th:selected="${entry.type == t}"></option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Fecha</label>
+          <input type="date" name="date" th:value="${entry.date}" required/>
+        </div>
+      </div>
+
+      <div id="dynamicFields" class="dynamic-card"
+           th:attr="data-entry=|{&quot;type&quot;:&quot;${entry.type}&quot;,&quot;chapters&quot;:&quot;${entry.chapters}&quot;,&quot;author&quot;:&quot;${entry.author}&quot;,&quot;season&quot;:&quot;${entry.season}&quot;,&quot;episode&quot;:&quot;${entry.episode}&quot;,&quot;venue&quot;:&quot;${entry.venue}&quot;,&quot;director&quot;:&quot;${entry.director}&quot;,&quot;seenInCinema&quot;:&quot;${entry.seenInCinema}&quot;,&quot;isSingleVolume&quot;:&quot;${entry.isSingleVolume}&quot;,&quot;comicVolume&quot;:&quot;${entry.comicVolume}&quot;,&quot;comicIssue&quot;:&quot;${entry.comicIssue}&quot;,&quot;finished&quot;:&quot;${entry.finished}&quot;,&quot;seasonFinished&quot;:&quot;${entry.seasonFinished}&quot;,&quot;seriesFinished&quot;:&quot;${entry.seriesFinished}&quot;}|"></div>
+
+      <div class="form-group">
+        <label>Descripción / Notas</label>
+        <textarea name="description" rows="3" th:text="${entry.description}"></textarea>
+      </div>
+
+      <div class="form-row align-end">
+        <div class="form-group">
+          <label>Nueva portada (opcional)</label>
+          <input type="file" name="cover" accept="image/*" class="file-input"/>
+          <img th:if="${entry.coverPath}" th:src="@{/covers/{f}(f=${entry.coverPath})}" class="cover-preview-small"/>
+        </div>
+        <div class="form-group">
+          <label>⭐ Valoración: <span id="ratingVal" th:text="${entry.rating != null ? entry.rating : 0}">0</span>/10</label>
+          <div class="star-row" id="starRow"></div>
+          <input type="hidden" name="rating" id="ratingInput" th:value="${entry.rating != null ? entry.rating : 0}"/>
+        </div>
+        <div class="form-group align-self-end">
+          <a th:href="@{/}" class="btn btn-secondary">Cancelar</a>
+          <button type="submit" class="btn btn-primary">💾 Guardar cambios</button>
+        </div>
+      </div>
+    </form>
+  </section>
+</main>
+<script th:src="@{/js/app.js}"></script>
+<script>initEditForm();</script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Estadísticas | Mi Registro Cultural</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand">📚 Mi Registro Cultural</div>
+  <div class="nav-links">
+    <a th:href="@{/}">📝 Registrar</a>
+    <a th:href="@{/buscar}">🔍 Buscar</a>
+    <a th:href="@{/estadisticas}" class="active">📊 Estadísticas</a>
+  </div>
+  <button class="theme-btn" onclick="toggleTheme()">🌙</button>
+</nav>
+<main class="main-content">
+  <div class="stats-header">
+    <h2>📊 Estadísticas</h2>
+    <form action="/estadisticas" method="get" class="period-form">
+      <select name="period" onchange="this.form.submit()">
+        <option value="semana" th:selected="${period=='semana'}">Esta semana</option>
+        <option value="mes"    th:selected="${period=='mes'}">Este mes</option>
+        <option value="anio"   th:selected="${period=='anio'}">Este año</option>
+        <option value="todo"   th:selected="${period=='todo'}">Todo el tiempo</option>
+      </select>
+    </form>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi kpi-accent">  <span class="kpi-icon">📚</span><span class="kpi-val" th:text="${total}">0</span>  <span class="kpi-lbl">en periodo</span></div>
+    <div class="kpi kpi-accent2"> <span class="kpi-icon">📋</span><span class="kpi-val" th:text="${totalAll}">0</span><span class="kpi-lbl">total histórico</span></div>
+    <div class="kpi kpi-success"> <span class="kpi-icon">📖</span><span class="kpi-val" th:text="${libros}">0</span>  <span class="kpi-lbl">libros</span></div>
+    <div class="kpi kpi-warn">    <span class="kpi-icon">🎥</span><span class="kpi-val" th:text="${peliculas}">0</span><span class="kpi-lbl">películas</span></div>
+    <div class="kpi kpi-purple">  <span class="kpi-icon">💭</span><span class="kpi-val" th:text="${comics}">0</span>  <span class="kpi-lbl">cómics</span></div>
+    <div class="kpi kpi-cinema">  <span class="kpi-icon">🎫</span><span class="kpi-val" th:text="${cine}">0</span>   <span class="kpi-lbl">en cine (periodo)</span></div>
+  </div>
+
+  <!-- Gráficos -->
+  <div class="charts-row">
+    <div class="chart-card flex-grow">
+      <h3>Registros por tipo</h3>
+      <canvas id="barChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Distribución</h3>
+      <canvas id="pieChart" width="260"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-card full-width">
+    <h3>Actividad mensual</h3>
+    <canvas id="lineChart"></canvas>
+  </div>
+
+  <div class="chart-card full-width">
+    <h3>Por día de la semana</h3>
+    <canvas id="dayChart"></canvas>
+  </div>
+
+  <!-- Sección Cine -->
+  <div class="section-title">🎫 Películas vistas en el cine</div>
+  <div th:if="${cinemaList != null and !cinemaList.isEmpty()}">
+    <div class="chart-card full-width">
+      <h3>🎟️ Lista de películas en el cine (<span th:text="${cineTotal}">0</span> en total)</h3>
+      <div class="cinema-list">
+        <div th:each="e, i : ${cinemaList}" class="cinema-row" th:classappend="${i.odd ? 'odd' : ''}">
+          <span class="cinema-num" th:text="${i.index + 1} + '.'">1.</span>
+          <span class="cinema-title" th:text="${e.title}">Título</span>
+          <span class="cinema-director" th:if="${e.director}" th:text="'🎬 ' + ${e.director}"></span>
+          <span class="cinema-rating" th:if="${e.rating != null and e.rating > 0}" th:text="'⭐ ' + ${e.rating} + '/10'"></span>
+          <span class="cinema-date" th:text="'📅 ' + ${e.date}"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p th:if="${cinemaList == null or cinemaList.isEmpty()}" class="empty-msg">📭 No hay películas registradas en el cine</p>
+
+  <!-- Datos para Chart.js -->
+  <script th:inline="javascript">
+    const porTipo  = /*[[${porTipo}]]*/ {};
+    const porMes   = /*[[${porMes}]]*/ {};
+    const porDia   = /*[[${porDia}]]*/ [];
+    const diasLbls = /*[[${diasLabels}]]*/ [];
+  </script>
+  <script th:src="@{/js/charts.js}"></script>
+</main>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

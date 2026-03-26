@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Registrar | Mi Registro Cultural</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}"/>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand">📚 Mi Registro Cultural</div>
+  <div class="nav-links">
+    <a th:href="@{/}" class="active">📝 Registrar</a>
+    <a th:href="@{/buscar}">🔍 Buscar</a>
+    <a th:href="@{/estadisticas}">📊 Estadísticas</a>
+  </div>
+  <button class="theme-btn" onclick="toggleTheme()">🌙</button>
+</nav>
+<main class="main-content">
+  <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+
+  <!-- FORMULARIO REGISTRO -->
+  <section class="card form-card">
+    <h2>📝 Registrar nueva entrada</h2>
+    <form action="/registrar" method="post" enctype="multipart/form-data" id="registerForm">
+
+      <div class="form-row">
+        <div class="form-group flex-grow">
+          <label>Título</label>
+          <input type="text" name="title" required placeholder="Ej: El Quijote" list="titleSuggestions" autocomplete="off"/>
+          <datalist id="titleSuggestions"></datalist>
+        </div>
+        <div class="form-group">
+          <label>Tipo</label>
+          <select name="type" id="typeSelect" onchange="updateDynamicFields()" required>
+            <option value="📚 Libro">📚 Libro</option>
+            <option value="🎬 Serie">🎬 Serie</option>
+            <option value="🎥 Película">🎥 Película</option>
+            <option value="🎭 Teatro">🎭 Teatro</option>
+            <option value="💭 Cómic">💭 Cómic</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Fecha</label>
+          <input type="date" name="date" id="dateInput" required/>
+        </div>
+      </div>
+
+      <!-- Campos dinámicos según tipo -->
+      <div id="dynamicFields" class="dynamic-card"></div>
+
+      <div class="form-group">
+        <label>Descripción / Notas</label>
+        <textarea name="description" rows="3" placeholder="¿Qué te pareció?"></textarea>
+      </div>
+
+      <div class="form-row align-end">
+        <div class="form-group">
+          <label>Portada</label>
+          <input type="file" name="cover" accept="image/*" class="file-input"/>
+        </div>
+        <div class="form-group">
+          <label>⭐ Valoración: <span id="ratingVal">0</span>/10</label>
+          <div class="star-row" id="starRow"></div>
+          <input type="hidden" name="rating" id="ratingInput" value="0"/>
+        </div>
+        <div class="form-group align-self-end">
+          <button type="submit" class="btn btn-primary">✅ Guardar entrada</button>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <!-- LISTA DE ENTRADAS -->
+  <section class="entries-section">
+    <h2>📋 Todos los registros <span class="badge" th:text="${entries.size()}">0</span></h2>
+    <div class="entries-grid">
+      <div th:each="entry : ${entries}" class="entry-card">
+        <th:block th:replace="~{fragments/entry-card :: card(${entry})}"/>
+      </div>
+    </div>
+  </section>
+</main>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

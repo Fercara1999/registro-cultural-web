@@ -1,0 +1,187 @@
+package com.registrocultural.controller;
+
+import com.registrocultural.model.Entry;
+import com.registrocultural.service.EntryService;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.io.IOException;
+import java.time.LocalDate;
+import java.util.List;
+
+@Controller
+public class EntryController {
+
+    private final EntryService service;
+
+    public EntryController(EntryService service) {
+        this.service = service;
+    }
+
+    // ── Inicio: lista todos ─────────────────────────────────────────
+    @GetMapping("/")
+    public String index(Model model) {
+        model.addAttribute("entries", service.getAll());
+        model.addAttribute("newEntry", new Entry());
+        return "index";
+    }
+
+    // ── Registrar nuevo ─────────────────────────────────────────────
+    @PostMapping("/registrar")
+    public String registrar(
+            @RequestParam String title,
+            @RequestParam String type,
+            @RequestParam(required = false) String description,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) Integer rating,
+            @RequestParam(required = false) Integer chapters,
+            @RequestParam(required = false) String author,
+            @RequestParam(required = false) Integer season,
+            @RequestParam(required = false) Integer episode,
+            @RequestParam(required = false) String venue,
+            @RequestParam(required = false) String director,
+            @RequestParam(required = false) Boolean seenInCinema,
+            @RequestParam(required = false) Boolean isSingleVolume,
+            @RequestParam(required = false) Integer comicVolume,
+            @RequestParam(required = false) Integer comicIssue,
+            @RequestParam(required = false) Boolean finished,
+            @RequestParam(required = false) Boolean seasonFinished,
+            @RequestParam(required = false) Boolean seriesFinished,
+            @RequestParam(required = false) MultipartFile cover,
+            RedirectAttributes ra) {
+
+        Entry entry = new Entry();
+        entry.setTitle(title.trim());
+        entry.setType(type);
+        entry.setDescription(description);
+        entry.setDate(date != null ? date : LocalDate.now());
+        entry.setRating(rating);
+        entry.setChapters(chapters);
+        entry.setAuthor(author);
+        entry.setSeason(season);
+        entry.setEpisode(episode);
+        entry.setVenue(venue);
+        entry.setDirector(director);
+        entry.setSeenInCinema(Boolean.TRUE.equals(seenInCinema));
+        entry.setIsSingleVolume(Boolean.TRUE.equals(isSingleVolume));
+        entry.setComicVolume(Boolean.TRUE.equals(isSingleVolume) ? null : comicVolume);
+        entry.setComicIssue(Boolean.TRUE.equals(isSingleVolume) ? null : comicIssue);
+        entry.setFinished(Boolean.TRUE.equals(isSingleVolume) ? null : finished);
+        entry.setSeasonFinished(seasonFinished);
+        entry.setSeriesFinished(Boolean.TRUE.equals(isSingleVolume) ? null : seriesFinished);
+
+        if (cover != null && !cover.isEmpty()) {
+            try { entry.setCoverPath(service.saveCover(cover)); }
+            catch (IOException e) { ra.addFlashAttribute("error", "No se pudo guardar la portada"); }
+        }
+
+        service.save(entry);
+        ra.addFlashAttribute("success", "✅ Entrada registrada correctamente");
+        return "redirect:/";
+    }
+
+    // ── Formulario edición ──────────────────────────────────────────
+    @GetMapping("/editar/{id}")
+    public String editarForm(@PathVariable Integer id, Model model) {
+        return service.getById(id).map(e -> {
+            model.addAttribute("entry", e);
+            return "editar";
+        }).orElse("redirect:/");
+    }
+
+    // ── Guardar edición ─────────────────────────────────────────────
+    @PostMapping("/editar/{id}")
+    public String editarSave(
+            @PathVariable Integer id,
+            @RequestParam String title,
+            @RequestParam String type,
+            @RequestParam(required = false) String description,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) Integer rating,
+            @RequestParam(required = false) Integer chapters,
+            @RequestParam(required = false) String author,
+            @RequestParam(required = false) Integer season,
+            @RequestParam(required = false) Integer episode,
+            @RequestParam(required = false) String venue,
+            @RequestParam(required = false) String director,
+            @RequestParam(required = false) Boolean seenInCinema,
+            @RequestParam(required = false) Boolean isSingleVolume,
+            @RequestParam(required = false) Integer comicVolume,
+            @RequestParam(required = false) Integer comicIssue,
+            @RequestParam(required = false) Boolean finished,
+            @RequestParam(required = false) Boolean seasonFinished,
+            @RequestParam(required = false) Boolean seriesFinished,
+            @RequestParam(required = false) MultipartFile cover,
+            RedirectAttributes ra) {
+
+        service.getById(id).ifPresent(entry -> {
+            entry.setTitle(title.trim());
+            entry.setType(type);
+            entry.setDescription(description);
+            entry.setDate(date != null ? date : LocalDate.now());
+            entry.setRating(rating);
+            entry.setChapters(chapters);
+            entry.setAuthor(author);
+            entry.setSeason(season);
+            entry.setEpisode(episode);
+            entry.setVenue(venue);
+            entry.setDirector(director);
+            entry.setSeenInCinema(Boolean.TRUE.equals(seenInCinema));
+            entry.setIsSingleVolume(Boolean.TRUE.equals(isSingleVolume));
+            entry.setComicVolume(Boolean.TRUE.equals(isSingleVolume) ? null : comicVolume);
+            entry.setComicIssue(Boolean.TRUE.equals(isSingleVolume) ? null : comicIssue);
+            entry.setFinished(Boolean.TRUE.equals(isSingleVolume) ? null : finished);
+            entry.setSeasonFinished(seasonFinished);
+            entry.setSeriesFinished(Boolean.TRUE.equals(isSingleVolume) ? null : seriesFinished);
+            if (cover != null && !cover.isEmpty()) {
+                try { entry.setCoverPath(service.saveCover(cover)); }
+                catch (IOException e) { /* log */ }
+            }
+            service.save(entry);
+        });
+        ra.addFlashAttribute("success", "✅ Registro actualizado");
+        return "redirect:/";
+    }
+
+    // ── Eliminar ────────────────────────────────────────────────────
+    @PostMapping("/eliminar/{id}")
+    public String eliminar(@PathVariable Integer id, RedirectAttributes ra) {
+        service.delete(id);
+        ra.addFlashAttribute("success", "🗑️ Registro eliminado");
+        return "redirect:/";
+    }
+
+    // ── Búsqueda ────────────────────────────────────────────────────
+    @GetMapping("/buscar")
+    public String buscar(
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            Model model) {
+        List<Entry> results = service.search(title, type, date);
+        model.addAttribute("entries",    results);
+        model.addAttribute("searchTitle", title);
+        model.addAttribute("searchType",  type);
+        model.addAttribute("searchDate",  date);
+        return "buscar";
+    }
+
+    // ── Estadísticas ────────────────────────────────────────────────
+    @GetMapping("/estadisticas")
+    public String estadisticas(@RequestParam(required = false, defaultValue = "mes") String period, Model model) {
+        model.addAllAttributes(service.getStats(period));
+        return "estadisticas";
+    }
+
+    // ── Portadas (servir imagen) ────────────────────────────────────
+    @GetMapping("/covers/{filename}")
+    @ResponseBody
+    public org.springframework.core.io.Resource serveFile(@PathVariable String filename) throws IOException {
+        java.nio.file.Path file = java.nio.file.Paths.get("covers").resolve(filename);
+        return new org.springframework.core.io.UrlResource(file.toUri());
+    }
+}
