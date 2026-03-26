@@ -72,7 +72,7 @@ public class EntryController {
             @RequestParam(required = false) Boolean seenInCinema,
             @RequestParam(required = false) Boolean isSingleVolume,
             @RequestParam(required = false) Integer comicVolume,
-            @RequestParam(required = false) Integer comicIssue,
+            @RequestParam(required = false) String comicIssue,   // ahora String para admitir rangos
             @RequestParam(required = false) Boolean finished,
             @RequestParam(required = false) Boolean seasonFinished,
             @RequestParam(required = false) Boolean seriesFinished,
@@ -80,13 +80,40 @@ public class EntryController {
             @RequestParam(required = false) String autoCoverUrl,
             RedirectAttributes ra) {
 
-        Entry entry = buildEntry(title, type, description, date != null ? date : LocalDate.now(),
-            rating, chapters, author, season, episode, venue, director,
-            seenInCinema, isSingleVolume, comicVolume, comicIssue, finished, seasonFinished, seriesFinished);
-        entry.setPending(false);
-        saveCoverToEntry(entry, cover, autoCoverUrl, ra);
-        service.save(entry);
-        ra.addFlashAttribute("success", "\u2705 Entrada registrada correctamente");
+        List<Integer> issues = parseIssueRange(comicIssue);
+
+        if (issues.size() <= 1) {
+            // Caso normal: 0 o 1 número
+            Integer issueInt = issues.isEmpty() ? null : issues.get(0);
+            Entry entry = buildEntry(title, type, description, date != null ? date : LocalDate.now(),
+                rating, chapters, author, season, episode, venue, director,
+                seenInCinema, isSingleVolume, comicVolume, issueInt, finished, seasonFinished, seriesFinished);
+            entry.setPending(false);
+            saveCoverToEntry(entry, cover, autoCoverUrl, ra);
+            service.save(entry);
+            ra.addFlashAttribute("success", "\u2705 Entrada registrada correctamente");
+        } else {
+            // Múltiples números: crear un registro por cada uno
+            String coverPath = null;
+            // Resolver portada una sola vez
+            if (cover != null && !cover.isEmpty()) {
+                try { coverPath = service.saveCover(cover); } catch (IOException e) { /* sin portada */ }
+            } else if (autoCoverUrl != null && !autoCoverUrl.isBlank()) {
+                try { coverPath = downloadRemoteCover(autoCoverUrl, service.getCoversDir()); } catch (IOException e) { /* sin portada */ }
+            }
+            LocalDate d = date != null ? date : LocalDate.now();
+            for (Integer issueNum : issues) {
+                Entry entry = buildEntry(title, type, description, d,
+                    rating, chapters, author, season, episode, venue, director,
+                    seenInCinema, isSingleVolume, comicVolume, issueNum, finished, seasonFinished, seriesFinished);
+                entry.setPending(false);
+                entry.setCoverPath(coverPath);
+                service.save(entry);
+            }
+            ra.addFlashAttribute("success", "\u2705 " + issues.size() + " registros creados (n\u00ba " +
+                issues.get(0) + "\u2013" + issues.get(issues.size()-1) + ")");
+        }
+
         return "redirect:/registrar";
     }
 
@@ -154,13 +181,17 @@ public class EntryController {
             @RequestParam(required = false) Boolean seenInCinema,
             @RequestParam(required = false) Boolean isSingleVolume,
             @RequestParam(required = false) Integer comicVolume,
-            @RequestParam(required = false) Integer comicIssue,
+            @RequestParam(required = false) String comicIssue,   // String también en editar
             @RequestParam(required = false) Boolean finished,
             @RequestParam(required = false) Boolean seasonFinished,
             @RequestParam(required = false) Boolean seriesFinished,
             @RequestParam(required = false) MultipartFile cover,
             @RequestParam(required = false) String autoCoverUrl,
             RedirectAttributes ra) {
+
+        // En editar siempre es un único número (se toma el primero si se mete rango)
+        List<Integer> issues = parseIssueRange(comicIssue);
+        Integer issueInt = issues.isEmpty() ? null : issues.get(0);
 
         service.getById(id).ifPresent(entry -> {
             entry.setTitle(title.trim()); entry.setType(type); entry.setDescription(description);
@@ -169,9 +200,8 @@ public class EntryController {
             entry.setSeason(season); entry.setEpisode(episode); entry.setVenue(venue); entry.setDirector(director);
             entry.setSeenInCinema(Boolean.TRUE.equals(seenInCinema));
             entry.setIsSingleVolume(Boolean.TRUE.equals(isSingleVolume));
-            // comicVolume solo se guarda si NO es tomo único; comicIssue SIEMPRE se guarda
             entry.setComicVolume(Boolean.TRUE.equals(isSingleVolume) ? null : comicVolume);
-            entry.setComicIssue(comicIssue);
+            entry.setComicIssue(issueInt);
             entry.setFinished(Boolean.TRUE.equals(isSingleVolume) ? null : finished);
             entry.setSeasonFinished(seasonFinished);
             entry.setSeriesFinished(Boolean.TRUE.equals(isSingleVolume) ? null : seriesFinished);
@@ -234,13 +264,9 @@ public class EntryController {
                 catch (IOException e) { failed++; }
             }
         }
-        return ResponseEntity.ok("fix-covers completado: " + fixed + " arregladas, " + failed + " fallidas.");
+        return ResponseEntity.ok("fix-covers: " + fixed + " arregladas, " + failed + " fallidas.");
     }
 
-    /**
-     * GET /api/entry/hint?title=X&type=Y
-     * Sugerencia de siguiente episodio/cap\u00edtulo/tomo y autocompletado de t\u00edtulos.
-     */
     @GetMapping("/api/entry/hint")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> entryHint(
@@ -248,23 +274,18 @@ public class EntryController {
             @RequestParam(required = false, defaultValue = "") String type) {
 
         Map<String, Object> result = new LinkedHashMap<>();
-
         if (type.contains("Serie") || type.contains("Libro") || type.contains("mic")) {
             List<String> titles = service.getAll().stream()
                 .filter(e -> !e.isPending())
                 .filter(e -> e.getType() != null && e.getType().contains(
                     type.contains("Serie") ? "Serie" : type.contains("Libro") ? "Libro" : "mic"))
-                .map(Entry::getTitle)
-                .filter(t -> t != null && !t.isBlank())
-                .distinct()
+                .map(Entry::getTitle).filter(t -> t != null && !t.isBlank()).distinct()
                 .filter(t -> title.isBlank() || t.toLowerCase().contains(title.toLowerCase()))
                 .sorted().limit(10).collect(Collectors.toList());
             result.put("titles", titles);
         }
-
         if (title.isBlank()) return ResponseEntity.ok(result);
         String titleLower = title.trim().toLowerCase();
-
         if (type.contains("Serie")) {
             List<Entry> entries = service.getAll().stream()
                 .filter(e -> !e.isPending())
@@ -302,11 +323,41 @@ public class EntryController {
                 .collect(Collectors.toList());
             if (!entries.isEmpty()) result.put("comicVolume", entries.get(0).getComicVolume() + 1);
         }
-
         return ResponseEntity.ok(result);
     }
 
     // ── Helpers ───────────────────────────────────────────────────
+
+    /**
+     * Parsea un string de números de serie de cómic:
+     *   "3"      → [3]
+     *   "3-5"    → [3,4,5]
+     *   "3,4,5"  → [3,4,5]
+     *   null/"" → []
+     */
+    private List<Integer> parseIssueRange(String raw) {
+        if (raw == null || raw.isBlank()) return Collections.emptyList();
+        raw = raw.trim();
+        // Rango con guión: "3-5"
+        if (raw.matches("\\d+-\\d+")) {
+            String[] parts = raw.split("-");
+            int from = Integer.parseInt(parts[0]);
+            int to   = Integer.parseInt(parts[1]);
+            if (from > to || to - from > 100) return List.of(from); // sanity
+            List<Integer> list = new ArrayList<>();
+            for (int i = from; i <= to; i++) list.add(i);
+            return list;
+        }
+        // Lista con comas: "3,4,5"
+        if (raw.contains(",")) {
+            return Arrays.stream(raw.split(","))
+                .map(String::trim).filter(s -> s.matches("\\d+"))
+                .map(Integer::parseInt).collect(Collectors.toList());
+        }
+        // Número simple
+        if (raw.matches("\\d+")) return List.of(Integer.parseInt(raw));
+        return Collections.emptyList();
+    }
 
     private Entry buildEntry(String title, String type, String description, LocalDate date,
             Integer rating, Integer chapters, String author, Integer season, Integer episode,
@@ -318,9 +369,8 @@ public class EntryController {
         e.setSeason(season); e.setEpisode(episode); e.setVenue(venue); e.setDirector(director);
         e.setSeenInCinema(Boolean.TRUE.equals(seenInCinema));
         e.setIsSingleVolume(Boolean.TRUE.equals(isSingleVolume));
-        // comicVolume: null si tomo único | comicIssue: SIEMPRE se guarda
         e.setComicVolume(Boolean.TRUE.equals(isSingleVolume) ? null : comicVolume);
-        e.setComicIssue(comicIssue);
+        e.setComicIssue(comicIssue); // siempre se guarda
         e.setFinished(Boolean.TRUE.equals(isSingleVolume) ? null : finished);
         e.setSeasonFinished(seasonFinished);
         e.setSeriesFinished(Boolean.TRUE.equals(isSingleVolume) ? null : seriesFinished);

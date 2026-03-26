@@ -292,19 +292,21 @@ function updateDynamicFields(prefill) {
       </div>`;
   } else if (type.includes('mic')) {
     const single = d.isSingleVolume === 'true';
+    // comicIssue puede ser string (p.ej. "3,4" o "3-5") cuando viene de prefill
+    const issueVal = d.comicIssue != null ? String(d.comicIssue) : '';
     html = `
       <div class="check-row" style="margin-bottom:10px">
         <label><input type="checkbox" name="isSingleVolume" id="singleVol" value="true" ${single?'checked':''} onchange="toggleComicFields()"/> \u00bfEs tomo \u00fanico?</label>
       </div>
-      <!-- N\u00ba serie: SIEMPRE visible -->
       <div class="form-row">
         <div id="comicVolumeGroup" class="form-group" style="display:${single?'none':'flex'};flex-direction:column">
           <label>\ud83d\udcd5 N\u00ba tomo</label>
           <input type="number" name="comicVolume" ${fs} min="1" value="${d.comicVolume||''}" oninput="fetchAutoCover()"/>
         </div>
         <div class="form-group">
-          <label>\ud83d\udcd6 N\u00ba serie</label>
-          <input type="number" name="comicIssue" ${fs} min="1" value="${d.comicIssue||''}"/>
+          <label>\ud83d\udcd6 N\u00ba serie <small style="color:var(--muted);font-weight:400">(p.ej: 3 \u00f3 3-5 \u00f3 3,4,5)</small></label>
+          <input type="text" name="comicIssue" id="comicIssueInput" ${fs} placeholder="3 \u00f3 3-5 \u00f3 3,4" value="${issueVal}" oninput="previewComicIssues()"/>
+          <span id="comicIssuePreview" style="font-size:0.75rem;color:var(--accent);margin-top:3px"></span>
         </div>
       </div>
       <div id="comicChecks" class="check-row" style="display:${single?'none':'flex'}">
@@ -319,11 +321,42 @@ function updateDynamicFields(prefill) {
   fetchEntryHint();
 }
 
+/** Muestra en tiempo real cuántos registros se crearán */
+function previewComicIssues() {
+  const input   = document.getElementById('comicIssueInput');
+  const preview = document.getElementById('comicIssuePreview');
+  if (!input || !preview) return;
+  const nums = parseIssueRange(input.value);
+  if (nums.length === 0) { preview.textContent = ''; return; }
+  if (nums.length === 1) { preview.textContent = ''; return; }
+  preview.textContent = `\u2139\ufe0f Se crear\u00e1n ${nums.length} registros: n\u00ba ${nums.join(', ')}`;
+}
+
+/** Parsea "3", "3-5", "3,4,5", "3, 4, 5" → [3,4,5] */
+function parseIssueRange(val) {
+  if (!val || !val.trim()) return [];
+  val = val.trim();
+  // Rango: "3-5"
+  const rangeMatch = val.match(/^(\d+)-(\d+)$/);
+  if (rangeMatch) {
+    const from = parseInt(rangeMatch[1]), to = parseInt(rangeMatch[2]);
+    if (from > to || to - from > 100) return []; // sanity check
+    const arr = [];
+    for (let i = from; i <= to; i++) arr.push(i);
+    return arr;
+  }
+  // Lista: "3,4,5" o "3, 4"
+  const parts = val.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+  if (parts.length > 0) return parts;
+  // Número simple
+  const single = parseInt(val);
+  return isNaN(single) ? [] : [single];
+}
+
 function toggleComicFields() {
   const single       = document.getElementById('singleVol')?.checked;
   const volumeGroup  = document.getElementById('comicVolumeGroup');
   const checks       = document.getElementById('comicChecks');
-  // N\u00ba tomo y checkboxes se ocultan en tomo \u00fanico; N\u00ba serie siempre visible
   if (volumeGroup) volumeGroup.style.display = single ? 'none' : 'flex';
   if (checks)      checks.style.display      = single ? 'none' : 'flex';
   syncStarsVisibility();
