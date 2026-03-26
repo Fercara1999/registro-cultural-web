@@ -167,7 +167,8 @@ function _doFetchCover() {
   let extra = '';
   if (type.includes('Pel')) {
     const dirEl = document.querySelector('input[name="director"]');
-    if (dirEl) extra = dirEl.value.trim();
+    // Para búsqueda de portada usar solo el primer director
+    if (dirEl) extra = dirEl.value.split(',')[0].trim();
   } else if (type.includes('Libro')) {
     const authEl = document.querySelector('input[name="author"]');
     if (authEl) extra = authEl.value.trim();
@@ -231,7 +232,6 @@ function _doFetchHint() {
   const type  = typeEl.value;
   if (!type || (!type.includes('Serie') && !type.includes('Libro') && !type.includes('mic'))) return;
 
-  // Para series, pasar también la temporada actual para sugerir en esa temporada
   const seasonEl = document.querySelector('input[name="season"]');
   const seasonVal = seasonEl && seasonEl.value ? parseInt(seasonEl.value) : null;
   const params = new URLSearchParams({ title, type });
@@ -298,7 +298,10 @@ function updateDynamicFields(prefill) {
   } else if (type.includes('Pel')) {
     html = `
       <div class="form-row">
-        <div class="form-group flex-grow"><label>🎬 Director</label><input type="text" name="director" ${fs} value="${d.director||''}" oninput="fetchAutoCover()"/></div>
+        <div class="form-group flex-grow">
+          <label>🎬 Director(es) <small style="color:var(--muted);font-weight:400">(varios separados por coma)</small></label>
+          <input type="text" name="director" ${fs} placeholder="Ej: Spielberg, Kubrick" value="${d.director||''}" oninput="fetchAutoCover()"/>
+        </div>
       </div>
       <div class="check-row"><label><input type="checkbox" name="seenInCinema" value="true" ${d.seenInCinema=='true'?'checked':''}/> 🎫 Vista en el cine</label></div>`;
   } else if (type.includes('Teatro')) {
@@ -326,9 +329,9 @@ function updateDynamicFields(prefill) {
       </div>
       <div id="comicChecks" class="check-row">
         <label><input type="checkbox" name="finished" value="true" ${d.finished=='true'?'checked':''} onchange="syncStarsVisibility()"/> 📘 Tomo terminado</label>
-        <th:block id="comicSeriesFinBlock" style="display:${single?'none':'inline'}">
+        <span id="comicSeriesFinBlock" style="display:${single?'none':'inline'}">
           <label><input type="checkbox" name="seriesFinished" value="true" ${d.seriesFinished=='true'?'checked':''} onchange="syncStarsVisibility()"/> 🏆 Serie terminada</label>
-        </th:block>
+        </span>
       </div>`;
   }
   if (type) { box.style.display = ''; box.innerHTML = html; }
@@ -377,8 +380,8 @@ function parseIssueRange(val) {
 }
 
 function toggleComicFields() {
-  const single      = document.getElementById('singleVol')?.checked;
-  const volumeGroup = document.getElementById('comicVolumeGroup');
+  const single         = document.getElementById('singleVol')?.checked;
+  const volumeGroup    = document.getElementById('comicVolumeGroup');
   const seriesFinBlock = document.getElementById('comicSeriesFinBlock');
   if (volumeGroup)     volumeGroup.style.display     = single ? 'none' : 'flex';
   if (seriesFinBlock)  seriesFinBlock.style.display  = single ? 'none' : 'inline';
@@ -395,7 +398,7 @@ function updateDynamicFieldsPending() {
   let html = '';
   if (type.includes('Libro'))       html = `<div class="form-row"><div class="form-group flex-grow"><label>✍️ Autor</label><input type="text" name="author" ${fs} oninput="fetchAutoCover()"/></div></div>`;
   else if (type.includes('Serie'))  html = `<div class="form-row"><div class="form-group flex-grow"><label>📺 Título exacto</label><input type="text" name="seriesHint" ${fs} oninput="fetchAutoCover()"/></div></div>`;
-  else if (type.includes('Pel'))    html = `<div class="form-row"><div class="form-group flex-grow"><label>🎬 Director</label><input type="text" name="director" ${fs} oninput="fetchAutoCover()"/></div></div>`;
+  else if (type.includes('Pel'))    html = `<div class="form-row"><div class="form-group flex-grow"><label>🎬 Director(es) <small style="color:var(--muted);font-weight:400">(varios separados por coma)</small></label><input type="text" name="director" ${fs} placeholder="Ej: Spielberg, Kubrick" oninput="fetchAutoCover()"/></div></div>`;
   else if (type.includes('Teatro')) html = `<div class="form-row"><div class="form-group flex-grow"><label>🎤 Lugar</label><input type="text" name="venue" ${fs}/></div></div>`;
   box.innerHTML = html;
 }
