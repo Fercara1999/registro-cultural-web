@@ -11,7 +11,9 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageOutputStream;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.file.*;
@@ -76,10 +78,6 @@ public class EntryService {
         return getAllNonPending();
     }
 
-    /**
-     * Guarda la portada redimensionada (max 300x450) y comprimida (JPEG 75%).
-     * Ahorra ~90% de espacio respecto a guardar la imagen original.
-     */
     public String saveCover(MultipartFile file) throws IOException {
         Path dir = Paths.get(coversDir);
         Files.createDirectories(dir);
@@ -88,7 +86,6 @@ public class EntryService {
         try (InputStream in = file.getInputStream()) {
             BufferedImage original = ImageIO.read(in);
             if (original == null) {
-                // Formato no soportado por ImageIO: guardar tal cual
                 Files.copy(file.getInputStream(), dest, StandardCopyOption.REPLACE_EXISTING);
                 return filename;
             }
@@ -98,9 +95,6 @@ public class EntryService {
         return filename;
     }
 
-    /**
-     * Guarda una portada descargada desde URL (ya como byte[]) con la misma compresión.
-     */
     public String saveCoverFromBytes(byte[] bytes, String ext) throws IOException {
         Path dir = Paths.get(coversDir);
         Files.createDirectories(dir);
@@ -118,13 +112,10 @@ public class EntryService {
         return filename;
     }
 
-    // ── helpers de imagen ────────────────────────────────────────
-
     private BufferedImage resizeCover(BufferedImage src) {
         int w = src.getWidth();
         int h = src.getHeight();
         if (w <= COVER_MAX_W && h <= COVER_MAX_H) {
-            // Ya cabe, solo convertir a RGB para JPEG
             return toRgb(src);
         }
         double scale = Math.min((double) COVER_MAX_W / w, (double) COVER_MAX_H / h);
@@ -164,7 +155,6 @@ public class EntryService {
         }
     }
 
-    /** Devuelve stats filtrando por periodo y opcionalmente por tipo ("Todos" = sin filtro) */
     public Map<String, Object> getStats(String period, String tipo) {
         List<Entry> all = getAllNonPending();
         LocalDate now  = LocalDate.now();
