@@ -52,10 +52,18 @@
         <textarea name="description" rows="3" placeholder="¿Qué te pareció?"></textarea>
       </div>
       <div class="form-row align-end">
+
+        <!-- Zona drag & drop de portada -->
         <div class="form-group">
-          <label>Portada manual (opcional)</label>
-          <input type="file" name="cover" accept="image/*" class="file-input"/>
+          <label>Portada (arrastra desde web o elige archivo)</label>
+          <div id="coverDropZone" class="cover-drop-zone" onclick="document.getElementById('coverFileInput').click()">
+            <span id="coverDropLabel">🖼️ Arrastra una imagen aquí<br/><small>o haz clic para seleccionar</small></span>
+            <img id="coverDropPreview" src="" alt="preview" style="display:none;max-width:90px;max-height:130px;border-radius:8px;object-fit:cover;"/>
+            <button type="button" id="coverDropClear" style="display:none;position:absolute;top:4px;right:6px;background:transparent;border:none;font-size:1.1rem;cursor:pointer;color:var(--muted);" onclick="clearCoverDrop(event)">✖</button>
+          </div>
+          <input type="file" id="coverFileInput" name="cover" accept="image/*" style="display:none" onchange="onCoverFileSelected(this)"/>
         </div>
+
         <div id="ratingBlock" class="form-group" style="display:none">
           <label>⭐ Valoración: <span id="ratingVal">0</span>/10</label>
           <div class="star-row" id="starRow"></div>

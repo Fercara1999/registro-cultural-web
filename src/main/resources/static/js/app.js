@@ -50,10 +50,7 @@ function syncStarsVisibility() {
   const seriesFinCb = document.querySelector('input[name="seriesFinished"]');
   const seasonFinCb = document.querySelector('input[name="seasonFinished"]');
   const hasDoneCheckbox = finishedCb || seriesFinCb || seasonFinCb;
-  if (!hasDoneCheckbox) {
-    ratingBlock.style.display = '';
-    return;
-  }
+  if (!hasDoneCheckbox) { ratingBlock.style.display = ''; return; }
   const done = (finishedCb?.checked) || (seriesFinCb?.checked) || (seasonFinCb?.checked);
   ratingBlock.style.display = done ? '' : 'none';
   if (!done) {
@@ -70,11 +67,115 @@ document.addEventListener('DOMContentLoaded', () => {
   syncStarsVisibility();
   document.addEventListener('change', e => {
     const n = e.target?.name;
-    if (n === 'finished' || n === 'seriesFinished' || n === 'seasonFinished') {
-      syncStarsVisibility();
+    if (n === 'finished' || n === 'seriesFinished' || n === 'seasonFinished') syncStarsVisibility();
+  });
+  initCoverDropZone();
+});
+
+// ── COVER DROP ZONE ────────────────────────────────────────────
+function initCoverDropZone() {
+  const zone = document.getElementById('coverDropZone');
+  if (!zone) return;
+
+  zone.addEventListener('dragover', e => {
+    e.preventDefault();
+    zone.classList.add('drag-over');
+  });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+
+    // 1. Archivo soltado directamente (desde el explorador de archivos)
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      if (file.type.startsWith('image/')) {
+        _setDropFile(file);
+        return;
+      }
+    }
+
+    // 2. URL de imagen arrastrada desde el navegador
+    const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+    if (url && url.startsWith('http')) {
+      _setDropUrl(url);
+      return;
+    }
+
+    // 3. HTML con src (arrastrar imagen desde página)
+    const html = e.dataTransfer.getData('text/html');
+    if (html) {
+      const match = html.match(/src=["']([^"']+)["']/);
+      if (match && match[1].startsWith('http')) {
+        _setDropUrl(match[1]);
+        return;
+      }
     }
   });
-});
+}
+
+function _setDropFile(file) {
+  // Asignar el fichero al input real para que lo envíe el form
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  const fileInput = document.getElementById('coverFileInput');
+  if (fileInput) fileInput.files = dt.files;
+  // Limpiar autoCoverUrl para que no interfiera
+  const hidden = document.getElementById('autoCoverUrl');
+  if (hidden) hidden.value = '';
+  // Preview
+  const reader = new FileReader();
+  reader.onload = ev => _showDropPreview(ev.target.result);
+  reader.readAsDataURL(file);
+}
+
+function _setDropUrl(url) {
+  // Guardar la URL en autoCoverUrl; el backend la descarga
+  const hidden = document.getElementById('autoCoverUrl');
+  if (hidden) hidden.value = url;
+  // Limpiar el file input
+  const fileInput = document.getElementById('coverFileInput');
+  if (fileInput) fileInput.value = '';
+  // Preview directo con la URL
+  _showDropPreview(url);
+}
+
+function _showDropPreview(src) {
+  const zone    = document.getElementById('coverDropZone');
+  const label   = document.getElementById('coverDropLabel');
+  const preview = document.getElementById('coverDropPreview');
+  const clearBtn = document.getElementById('coverDropClear');
+  if (!zone || !preview) return;
+  preview.src = src;
+  preview.style.display = 'block';
+  if (label)   label.style.display   = 'none';
+  if (clearBtn) clearBtn.style.display = 'block';
+}
+
+function clearCoverDrop(event) {
+  if (event) event.stopPropagation();
+  const fileInput = document.getElementById('coverFileInput');
+  const hidden    = document.getElementById('autoCoverUrl');
+  const preview   = document.getElementById('coverDropPreview');
+  const label     = document.getElementById('coverDropLabel');
+  const clearBtn  = document.getElementById('coverDropClear');
+  if (fileInput) fileInput.value = '';
+  if (hidden)    hidden.value    = '';
+  if (preview)   { preview.src = ''; preview.style.display = 'none'; }
+  if (label)     label.style.display   = 'block';
+  if (clearBtn)  clearBtn.style.display = 'none';
+  // Volver a mostrar la portada automática si había una
+  const autoCoverImg = document.getElementById('autoCoverImg');
+  if (autoCoverImg && autoCoverImg.src) {
+    hidden.value = autoCoverImg.src;
+  }
+}
+
+function onCoverFileSelected(input) {
+  if (input.files && input.files[0]) {
+    _setDropFile(input.files[0]);
+  }
+}
 
 // ── PORTADA AUTOMÁTICA ─────────────────────────────────────────
 let coverDebounce = null;
@@ -111,7 +212,12 @@ function _doFetchCover() {
 
 function _showCoverPreview(url) {
   const hiddenInput = document.getElementById('autoCoverUrl');
-  if (hiddenInput) hiddenInput.value = url;
+  // Solo actualizar si el usuario no ha puesto una portada manual en la drop zone
+  const fileInput = document.getElementById('coverFileInput');
+  const hasManual = (fileInput && fileInput.files && fileInput.files.length > 0)
+                  || document.getElementById('coverDropPreview')?.style.display === 'block';
+  if (!hasManual && hiddenInput) hiddenInput.value = url;
+
   let box = document.getElementById('autoCoverBox');
   if (!box) {
     box = document.createElement('div');
@@ -128,8 +234,8 @@ function _showCoverPreview(url) {
                   style="margin-top:8px;font-size:0.78rem;background:transparent;border:1px solid var(--muted);border-radius:6px;padding:2px 10px;color:var(--muted);cursor:pointer;">✖ No usar esta portada</button>
         </div>
       </div>`;
-    const fileGroup = document.querySelector('input[type="file"]')?.closest('.form-group');
-    if (fileGroup) fileGroup.parentNode.insertBefore(box, fileGroup);
+    const dropZone = document.getElementById('coverDropZone');
+    if (dropZone) dropZone.parentNode.insertBefore(box, dropZone);
   }
   document.getElementById('autoCoverImg').src = url;
   box.style.display = 'block';
@@ -161,22 +267,20 @@ function _doFetchHint() {
   fetch('/api/entry/hint?' + new URLSearchParams({ title, type }))
     .then(r => r.json())
     .then(data => {
-      // Actualizar datalist de títulos
       const dl = document.getElementById('titleSuggestions');
       if (dl && data.titles) {
         dl.innerHTML = data.titles.map(t => `<option value="${t}"></option>`).join('');
       }
-      // Solo aplicar sugerencias de campos si el título coincide exacto
       if (type.includes('Serie')) {
         const seasonEl  = document.querySelector('input[name="season"]');
         const episodeEl = document.querySelector('input[name="episode"]');
         if (seasonEl  && data.season  != null) seasonEl.value  = data.season;
         if (episodeEl && data.episode != null) episodeEl.value = data.episode;
       } else if (type.includes('Libro')) {
-        const chapEl  = document.querySelector('input[name="chapters"]');
-        const authEl  = document.querySelector('input[name="author"]');
-        if (chapEl  && data.chapters != null) chapEl.value  = data.chapters;
-        if (authEl  && data.author   != null && authEl.value === '') authEl.value = data.author;
+        const chapEl = document.querySelector('input[name="chapters"]');
+        const authEl = document.querySelector('input[name="author"]');
+        if (chapEl && data.chapters != null) chapEl.value = data.chapters;
+        if (authEl && data.author   != null && authEl.value === '') authEl.value = data.author;
       } else if (type.includes('mic')) {
         const volEl = document.querySelector('input[name="comicVolume"]');
         if (volEl && data.comicVolume != null) volEl.value = data.comicVolume;
@@ -185,7 +289,7 @@ function _doFetchHint() {
     .catch(() => {});
 }
 
-// ── CAMPOS DINÁMICOS (formulario REGISTRAR) ────────────────────────
+// ── CAMPOS DINÁMICOS (REGISTRAR) ─────────────────────────────────
 function updateDynamicFields(prefill) {
   const sel = document.getElementById('typeSelect');
   const box = document.getElementById('dynamicFields');
@@ -237,18 +341,10 @@ function updateDynamicFields(prefill) {
         <label><input type="checkbox" name="seriesFinished" value="true" ${d.seriesFinished=='true'?'checked':''} onchange="syncStarsVisibility()"/> \ud83c\udfc6 Serie terminada</label>
       </div>`;
   }
-
-  if (type) {
-    box.style.display = '';
-    box.innerHTML = html;
-  } else {
-    box.style.display = 'none';
-    box.innerHTML = '';
-  }
-
+  if (type) { box.style.display = ''; box.innerHTML = html; }
+  else       { box.style.display = 'none'; box.innerHTML = ''; }
   syncStarsVisibility();
   fetchAutoCover();
-  // Lanzar hint solo si ya hay título
   fetchEntryHint();
 }
 
@@ -261,7 +357,7 @@ function toggleComicFields() {
   syncStarsVisibility();
 }
 
-// ── CAMPOS DINÁMICOS (formulario PENDIENTES) ───────────────────────
+// ── CAMPOS DINÁMICOS (PENDIENTES) ─────────────────────────────────
 function updateDynamicFieldsPending() {
   const sel = document.getElementById('typeSelectPending');
   const box = document.getElementById('dynamicFieldsPending');
@@ -269,15 +365,10 @@ function updateDynamicFieldsPending() {
   const type = sel.value || '';
   const fs = 'style="width:100%;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--input);color:var(--text);font-size:.92rem"';
   let html = '';
-  if (type.includes('Libro')) {
-    html = `<div class="form-row"><div class="form-group flex-grow"><label>\u270d\ufe0f Autor</label><input type="text" name="author" ${fs} oninput="fetchAutoCover()"/></div></div>`;
-  } else if (type.includes('Serie')) {
-    html = `<div class="form-row"><div class="form-group flex-grow"><label>\ud83d\udcfa T\u00edtulo exacto</label><input type="text" name="seriesHint" ${fs} oninput="fetchAutoCover()"/></div></div>`;
-  } else if (type.includes('Pel')) {
-    html = `<div class="form-row"><div class="form-group flex-grow"><label>\ud83c\udfac Director</label><input type="text" name="director" ${fs} oninput="fetchAutoCover()"/></div></div>`;
-  } else if (type.includes('Teatro')) {
-    html = `<div class="form-row"><div class="form-group flex-grow"><label>\ud83c\udfa4 Lugar</label><input type="text" name="venue" ${fs}/></div></div>`;
-  }
+  if (type.includes('Libro'))  html = `<div class="form-row"><div class="form-group flex-grow"><label>\u270d\ufe0f Autor</label><input type="text" name="author" ${fs} oninput="fetchAutoCover()"/></div></div>`;
+  else if (type.includes('Serie')) html = `<div class="form-row"><div class="form-group flex-grow"><label>\ud83d\udcfa T\u00edtulo exacto</label><input type="text" name="seriesHint" ${fs} oninput="fetchAutoCover()"/></div></div>`;
+  else if (type.includes('Pel'))   html = `<div class="form-row"><div class="form-group flex-grow"><label>\ud83c\udfac Director</label><input type="text" name="director" ${fs} oninput="fetchAutoCover()"/></div></div>`;
+  else if (type.includes('Teatro')) html = `<div class="form-row"><div class="form-group flex-grow"><label>\ud83c\udfa4 Lugar</label><input type="text" name="venue" ${fs}/></div></div>`;
   box.innerHTML = html;
 }
 
@@ -287,25 +378,13 @@ document.addEventListener('DOMContentLoaded', () => {
   updateDynamicFieldsPending();
   const dateIn = document.getElementById('dateInput');
   if (dateIn && !dateIn.value) dateIn.value = new Date().toISOString().split('T')[0];
-
   const titleEl = document.querySelector('input[name="title"]');
-  if (titleEl) {
-    titleEl.addEventListener('input', () => {
-      fetchAutoCover();
-      fetchEntryHint();
-    });
-  }
-
+  if (titleEl) titleEl.addEventListener('input', () => { fetchAutoCover(); fetchEntryHint(); });
   const typeEl = document.getElementById('typeSelect');
-  if (typeEl) typeEl.addEventListener('change', () => {
-    _hideCoverPreview();
-    setTimeout(() => { fetchAutoCover(); fetchEntryHint(); }, 300);
-  });
+  if (typeEl) typeEl.addEventListener('change', () => { _hideCoverPreview(); setTimeout(() => { fetchAutoCover(); fetchEntryHint(); }, 300); });
   const typeElP = document.getElementById('typeSelectPending');
-  if (typeElP) typeElP.addEventListener('change', () => {
-    _hideCoverPreview();
-    setTimeout(fetchAutoCover, 300);
-  });
+  if (typeElP) typeElP.addEventListener('change', () => { _hideCoverPreview(); setTimeout(fetchAutoCover, 300); });
+  initCoverDropZone();
 });
 
 // ── EDIT FORM ─────────────────────────────────────────────────────
