@@ -66,13 +66,13 @@ public class EntryController {
             @RequestParam(required = false) Integer chapters,
             @RequestParam(required = false) String author,
             @RequestParam(required = false) Integer season,
-            @RequestParam(required = false) String episode,      // String: admite rangos
+            @RequestParam(required = false) String episode,
             @RequestParam(required = false) String venue,
             @RequestParam(required = false) String director,
             @RequestParam(required = false) Boolean seenInCinema,
             @RequestParam(required = false) Boolean isSingleVolume,
             @RequestParam(required = false) Integer comicVolume,
-            @RequestParam(required = false) String comicIssue,   // String: admite rangos
+            @RequestParam(required = false) String comicIssue,
             @RequestParam(required = false) Boolean finished,
             @RequestParam(required = false) Boolean seasonFinished,
             @RequestParam(required = false) Boolean seriesFinished,
@@ -88,7 +88,6 @@ public class EntryController {
         boolean multiIssue   = issues.size()   > 1;
 
         if (!multiEpisode && !multiIssue) {
-            // Caso normal: un solo registro
             Integer epInt    = episodes.isEmpty() ? null : episodes.get(0);
             Integer issueInt = issues.isEmpty()   ? null : issues.get(0);
             Entry entry = buildEntry(title, type, description, d, rating, chapters, author,
@@ -97,12 +96,9 @@ public class EntryController {
             entry.setPending(false);
             saveCoverToEntry(entry, cover, autoCoverUrl, ra);
             service.save(entry);
-            ra.addFlashAttribute("success", "✅ Entrada registrada correctamente");
-
+            ra.addFlashAttribute("success", "\u2705 Entrada registrada correctamente");
         } else {
-            // Múltiples episodios O múltiples números de serie: resolver portada una sola vez
             String coverPath = resolveCoverPath(cover, autoCoverUrl);
-
             if (multiEpisode) {
                 for (Integer epNum : episodes) {
                     Entry entry = buildEntry(title, type, description, d, rating, chapters, author,
@@ -113,10 +109,9 @@ public class EntryController {
                     entry.setCoverPath(coverPath);
                     service.save(entry);
                 }
-                ra.addFlashAttribute("success", "✅ " + episodes.size() + " registros creados (cap. " +
-                    episodes.get(0) + "–" + episodes.get(episodes.size()-1) + ")");
+                ra.addFlashAttribute("success", "\u2705 " + episodes.size() + " registros creados (cap. " +
+                    episodes.get(0) + "\u2013" + episodes.get(episodes.size()-1) + ")");
             } else {
-                // multiIssue (cómic)
                 for (Integer issueNum : issues) {
                     Entry entry = buildEntry(title, type, description, d, rating, chapters, author,
                         season, episodes.isEmpty() ? null : episodes.get(0), venue, director,
@@ -126,11 +121,10 @@ public class EntryController {
                     entry.setCoverPath(coverPath);
                     service.save(entry);
                 }
-                ra.addFlashAttribute("success", "✅ " + issues.size() + " registros creados (nº " +
-                    issues.get(0) + "–" + issues.get(issues.size()-1) + ")");
+                ra.addFlashAttribute("success", "\u2705 " + issues.size() + " registros creados (n\u00ba " +
+                    issues.get(0) + "\u2013" + issues.get(issues.size()-1) + ")");
             }
         }
-
         return "redirect:/registrar";
     }
 
@@ -160,7 +154,7 @@ public class EntryController {
         entry.setVenue(venue); entry.setPending(true);
         saveCoverToEntry(entry, cover, autoCoverUrl, ra);
         service.save(entry);
-        ra.addFlashAttribute("success", "⏳ Pendiente añadido correctamente");
+        ra.addFlashAttribute("success", "\u23f3 Pendiente a\u00f1adido correctamente");
         return "redirect:/pendientes";
     }
 
@@ -169,11 +163,11 @@ public class EntryController {
         service.getById(id).ifPresent(e -> {
             e.setPending(false); e.setDate(LocalDate.now()); service.save(e);
         });
-        ra.addFlashAttribute("success", "✅ Marcado como visto y movido a registros");
+        ra.addFlashAttribute("success", "\u2705 Marcado como visto y movido a registros");
         return "redirect:/pendientes";
     }
 
-    // ── EDITAR / ELIMINAR ────────────────────────────────────────
+    // ── EDITAR / ELIMINAR ───────────────────────────────────────
 
     @GetMapping("/editar/{id}")
     public String editarForm(@PathVariable Integer id, Model model) {
@@ -206,7 +200,6 @@ public class EntryController {
             @RequestParam(required = false) String autoCoverUrl,
             RedirectAttributes ra) {
 
-        // En editar siempre se toma el primer número si viene rango
         List<Integer> episodes = parseIssueRange(episode);
         List<Integer> issues   = parseIssueRange(comicIssue);
         Integer epInt    = episodes.isEmpty() ? null : episodes.get(0);
@@ -222,7 +215,7 @@ public class EntryController {
             entry.setIsSingleVolume(Boolean.TRUE.equals(isSingleVolume));
             entry.setComicVolume(Boolean.TRUE.equals(isSingleVolume) ? null : comicVolume);
             entry.setComicIssue(issueInt);
-            entry.setFinished(Boolean.TRUE.equals(isSingleVolume) ? null : finished);
+            entry.setFinished(Boolean.TRUE.equals(isSingleVolume) ? Boolean.TRUE.equals(finished) : Boolean.TRUE.equals(finished));
             entry.setSeasonFinished(seasonFinished);
             entry.setSeriesFinished(Boolean.TRUE.equals(isSingleVolume) ? null : seriesFinished);
             if (cover != null && !cover.isEmpty()) {
@@ -232,14 +225,14 @@ public class EntryController {
             }
             service.save(entry);
         });
-        ra.addFlashAttribute("success", "✅ Registro actualizado");
+        ra.addFlashAttribute("success", "\u2705 Registro actualizado");
         return "redirect:/home";
     }
 
     @PostMapping("/eliminar/{id}")
     public String eliminar(@PathVariable Integer id, RedirectAttributes ra) {
         service.delete(id);
-        ra.addFlashAttribute("success", "🗑️ Registro eliminado");
+        ra.addFlashAttribute("success", "\ud83d\uddd1\ufe0f Registro eliminado");
         return "redirect:/home";
     }
 
@@ -287,13 +280,22 @@ public class EntryController {
         return ResponseEntity.ok("fix-covers: " + fixed + " arregladas, " + failed + " fallidas.");
     }
 
+    /**
+     * GET /api/entry/hint
+     * Sugerencia de siguiente episodio/cap\u00edtulo/tomo y autocompletado de t\u00edtulos.
+     * Para series: sugiere el siguiente episodio del mismo t\u00edtulo Y temporada.
+     * Para c\u00f3mics: sugiere el siguiente n\u00famero de serie (comicIssue) del mismo t\u00edtulo.
+     */
     @GetMapping("/api/entry/hint")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> entryHint(
             @RequestParam(required = false, defaultValue = "") String title,
-            @RequestParam(required = false, defaultValue = "") String type) {
+            @RequestParam(required = false, defaultValue = "") String type,
+            @RequestParam(required = false) Integer season) {
 
         Map<String, Object> result = new LinkedHashMap<>();
+
+        // Autocompletado de t\u00edtulos
         if (type.contains("Serie") || type.contains("Libro") || type.contains("mic")) {
             List<String> titles = service.getAll().stream()
                 .filter(e -> !e.isPending())
@@ -304,57 +306,88 @@ public class EntryController {
                 .sorted().limit(10).collect(Collectors.toList());
             result.put("titles", titles);
         }
+
         if (title.isBlank()) return ResponseEntity.ok(result);
         String titleLower = title.trim().toLowerCase();
+
         if (type.contains("Serie")) {
+            // Buscar el \u00faltimo episodio del mismo t\u00edtulo y temporada (si se pasa season)
             List<Entry> entries = service.getAll().stream()
                 .filter(e -> !e.isPending())
                 .filter(e -> e.getType() != null && e.getType().contains("Serie"))
                 .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
                 .filter(e -> e.getSeason() != null && e.getEpisode() != null)
-                .sorted(Comparator.comparingInt(Entry::getSeason).thenComparingInt(Entry::getEpisode).reversed())
                 .collect(Collectors.toList());
+
             if (!entries.isEmpty()) {
-                Entry last = entries.get(0);
-                boolean done = Boolean.TRUE.equals(last.getSeasonFinished()) || Boolean.TRUE.equals(last.getSeriesFinished());
-                result.put("season",  done ? last.getSeason() + 1 : last.getSeason());
-                result.put("episode", done ? 1 : last.getEpisode() + 1);
+                // Si se pasa season, intentar sugerir en esa temporada primero
+                List<Entry> inSeason = season != null
+                    ? entries.stream().filter(e -> e.getSeason().equals(season)).collect(Collectors.toList())
+                    : Collections.emptyList();
+
+                Entry last;
+                if (!inSeason.isEmpty()) {
+                    // Sugerir siguiente episodio en la misma temporada
+                    last = inSeason.stream()
+                        .max(Comparator.comparingInt(Entry::getEpisode)).orElse(null);
+                    if (last != null) {
+                        boolean done = Boolean.TRUE.equals(last.getSeasonFinished()) || Boolean.TRUE.equals(last.getSeriesFinished());
+                        result.put("season",  done ? last.getSeason() + 1 : last.getSeason());
+                        result.put("episode", done ? 1 : last.getEpisode() + 1);
+                    }
+                } else {
+                    // Sin season param: usar el \u00faltimo registro global
+                    last = entries.stream()
+                        .max(Comparator.comparingInt(Entry::getSeason)
+                            .thenComparingInt(Entry::getEpisode)).orElse(null);
+                    if (last != null) {
+                        boolean done = Boolean.TRUE.equals(last.getSeasonFinished()) || Boolean.TRUE.equals(last.getSeriesFinished());
+                        result.put("season",  done ? last.getSeason() + 1 : last.getSeason());
+                        result.put("episode", done ? 1 : last.getEpisode() + 1);
+                    }
+                }
             }
+
         } else if (type.contains("Libro")) {
             List<Entry> entries = service.getAll().stream()
                 .filter(e -> !e.isPending())
                 .filter(e -> e.getType() != null && e.getType().contains("Libro"))
                 .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
                 .filter(e -> e.getChapters() != null)
-                .sorted(Comparator.comparingInt(Entry::getChapters).reversed())
                 .collect(Collectors.toList());
             if (!entries.isEmpty()) {
-                Entry last = entries.get(0);
-                result.put("chapters", last.getChapters() + 1);
-                if (last.getAuthor() != null && !last.getAuthor().isBlank()) result.put("author", last.getAuthor());
+                Entry last = entries.stream().max(Comparator.comparingInt(Entry::getChapters)).orElse(null);
+                if (last != null) {
+                    result.put("chapters", last.getChapters() + 1);
+                    if (last.getAuthor() != null && !last.getAuthor().isBlank()) result.put("author", last.getAuthor());
+                }
             }
+
         } else if (type.contains("mic")) {
             List<Entry> entries = service.getAll().stream()
                 .filter(e -> !e.isPending())
                 .filter(e -> e.getType() != null && e.getType().contains("mic"))
                 .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
-                .filter(e -> e.getComicVolume() != null)
-                .sorted(Comparator.comparingInt(Entry::getComicVolume).reversed())
                 .collect(Collectors.toList());
-            if (!entries.isEmpty()) result.put("comicVolume", entries.get(0).getComicVolume() + 1);
+
+            // Sugerir siguiente tomo (comicVolume)
+            entries.stream()
+                .filter(e -> e.getComicVolume() != null)
+                .max(Comparator.comparingInt(Entry::getComicVolume))
+                .ifPresent(last -> result.put("comicVolume", last.getComicVolume() + 1));
+
+            // Sugerir siguiente n\u00famero de serie (comicIssue)
+            entries.stream()
+                .filter(e -> e.getComicIssue() != null)
+                .max(Comparator.comparingInt(Entry::getComicIssue))
+                .ifPresent(last -> result.put("comicIssue", last.getComicIssue() + 1));
         }
+
         return ResponseEntity.ok(result);
     }
 
-    // ── Helpers ──────────────────────────────────────────────────
+    // ── Helpers ────────────────────────────────────────────────
 
-    /**
-     * Parsea un string de números:
-     *   "3"     → [3]
-     *   "3-5"   → [3,4,5]
-     *   "3,4,5" → [3,4,5]
-     *   null/"" → []
-     */
     private List<Integer> parseIssueRange(String raw) {
         if (raw == null || raw.isBlank()) return Collections.emptyList();
         raw = raw.trim();
@@ -388,7 +421,8 @@ public class EntryController {
         e.setIsSingleVolume(Boolean.TRUE.equals(isSingleVolume));
         e.setComicVolume(Boolean.TRUE.equals(isSingleVolume) ? null : comicVolume);
         e.setComicIssue(comicIssue);
-        e.setFinished(Boolean.TRUE.equals(isSingleVolume) ? null : finished);
+        // finished se guarda siempre (tomo \u00fanico tambi\u00e9n puede estar terminado)
+        e.setFinished(Boolean.TRUE.equals(finished));
         e.setSeasonFinished(seasonFinished);
         e.setSeriesFinished(Boolean.TRUE.equals(isSingleVolume) ? null : seriesFinished);
         return e;

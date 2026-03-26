@@ -12,46 +12,55 @@
 
     <!-- Libro -->
     <th:block th:if="${entry.type != null and entry.type.contains('Libro')}">
-      <span th:if="${entry.author}" class="chip" th:text="'✍️ ' + ${entry.author}"></span>
-      <span th:if="${entry.chapters}" class="chip" th:text="'📖 Cap. ' + ${entry.chapters}"></span>
-      <span th:if="${entry.finished}" class="chip chip-green">✅ Libro terminado</span>
+      <span th:if="${entry.author}" class="chip" th:text="'\u270d\ufe0f ' + ${entry.author}"></span>
+      <span th:if="${entry.chapters}" class="chip" th:text="'\ud83d\udcd6 Cap. ' + ${entry.chapters}"></span>
+      <span th:if="${entry.finished}" class="chip chip-green">\u2705 Libro terminado</span>
     </th:block>
 
     <!-- Serie -->
     <th:block th:if="${entry.type != null and entry.type.contains('Serie')}">
-      <span th:if="${entry.season}" class="chip" th:text="'T' + ${entry.season} + ' E' + ${entry.episode}"></span>
-      <span th:if="${entry.seasonFinished}" class="chip chip-green">🌟 Fin temporada</span>
-      <span th:if="${entry.seriesFinished}" class="chip chip-green">🏆 Serie terminada</span>
+      <span th:if="${entry.season != null and entry.episode != null}" class="chip"
+            th:text="'T' + ${entry.season} + ' E' + ${entry.episode}"></span>
+      <span th:if="${entry.season != null and entry.episode == null}" class="chip"
+            th:text="'T' + ${entry.season}"></span>
+      <span th:if="${entry.seasonFinished}" class="chip chip-green">\ud83c\udf1f Fin temporada</span>
+      <span th:if="${entry.seriesFinished}" class="chip chip-green">\ud83c\udfc6 Serie terminada</span>
     </th:block>
 
-    <!-- Película -->
+    <!-- Pel\u00edcula -->
     <th:block th:if="${entry.type != null and entry.type.contains('Pel')}">
-      <span th:if="${entry.director}" class="chip" th:text="'🎬 ' + ${entry.director}"></span>
-      <span th:if="${entry.seenInCinema}" class="chip">🎫 Vista en cine</span>
+      <span th:if="${entry.director}" class="chip" th:text="'\ud83c\udfac ' + ${entry.director}"></span>
+      <span th:if="${entry.seenInCinema}" class="chip">\ud83c\udfab Vista en cine</span>
     </th:block>
 
     <!-- Teatro -->
     <th:block th:if="${entry.type != null and entry.type.contains('Teatro')}">
-      <span th:if="${entry.venue}" class="chip" th:text="'🎭 ' + ${entry.venue}"></span>
+      <span th:if="${entry.venue}" class="chip" th:text="'\ud83c\udfa4 ' + ${entry.venue}"></span>
     </th:block>
 
-    <!-- Cómic -->
+    <!-- C\u00f3mic -->
     <th:block th:if="${entry.type != null and entry.type.contains('mic')}">
-      <span th:if="${entry.isSingleVolume}" class="chip">Tomo único</span>
+      <!-- Tomo \u00fanico -->
+      <th:block th:if="${entry.isSingleVolume}">
+        <span class="chip">Tomo \u00fanico</span>
+        <span th:if="${entry.comicIssue}" class="chip" th:text="'#' + ${entry.comicIssue}"></span>
+        <span th:if="${entry.finished}" class="chip chip-green">\u2705 Tomo terminado</span>
+      </th:block>
+      <!-- Tomo numerado -->
       <th:block th:unless="${entry.isSingleVolume}">
-        <span th:if="${entry.comicVolume}" class="chip" th:text="'📕 Tomo ' + ${entry.comicVolume}"></span>
+        <span th:if="${entry.comicVolume}" class="chip" th:text="'\ud83d\udcd5 Tomo ' + ${entry.comicVolume}"></span>
         <span th:if="${entry.comicIssue}"  class="chip" th:text="'#' + ${entry.comicIssue}"></span>
-        <span th:if="${entry.finished}"       class="chip chip-green">✅ Tomo terminado</span>
-        <span th:if="${entry.seriesFinished}" class="chip chip-green">🏆 Serie terminada</span>
+        <span th:if="${entry.finished}"       class="chip chip-green">\u2705 Tomo terminado</span>
+        <span th:if="${entry.seriesFinished}" class="chip chip-green">\ud83c\udfc6 Serie terminada</span>
       </th:block>
     </th:block>
 
-    <span class="chip" th:text="'📅 ' + ${entry.date}"></span>
+    <span class="chip" th:text="'\ud83d\udcc5 ' + ${entry.date}"></span>
 
     <!-- Estrellas -->
     <div th:if="${entry.rating != null and entry.rating > 0}" class="stars-row">
       <th:block th:each="i : ${#numbers.sequence(1, 10)}">
-        <span th:text="${i <= entry.rating ? '★' : '☆'}" th:class="${i <= entry.rating ? 'star on' : 'star'}"></span>
+        <span th:text="${i <= entry.rating ? '\u2605' : '\u2606'}" th:class="${i <= entry.rating ? 'star on' : 'star'}"></span>
       </th:block>
       <span class="rating-label" th:text="${entry.rating} + '/10'"></span>
     </div>
@@ -59,9 +68,9 @@
     <p th:if="${entry.description}" class="card-desc" th:text="${entry.description}"></p>
   </div>
   <div class="card-actions">
-    <a th:href="@{/editar/{id}(id=${entry.id})}" class="btn-icon" title="Editar">✏️</a>
-    <form th:action="@{/eliminar/{id}(id=${entry.id})}" method="post" onsubmit="return confirm('¿Eliminar este registro?')">
-      <button type="submit" class="btn-icon" title="Eliminar">🗑️</button>
+    <a th:href="@{/editar/{id}(id=${entry.id})}" class="btn-icon" title="Editar">\u270f\ufe0f</a>
+    <form th:action="@{/eliminar/{id}(id=${entry.id})}" method="post" onsubmit="return confirm('\u00bfEliminar este registro?')">
+      <button type="submit" class="btn-icon" title="Eliminar">\ud83d\uddd1\ufe0f</button>
     </form>
   </div>
 </div>

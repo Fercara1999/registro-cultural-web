@@ -230,15 +230,22 @@ function _doFetchHint() {
   const title = titleEl.value.trim();
   const type  = typeEl.value;
   if (!type || (!type.includes('Serie') && !type.includes('Libro') && !type.includes('mic'))) return;
-  fetch('/api/entry/hint?' + new URLSearchParams({ title, type }))
+
+  // Para series, pasar también la temporada actual para sugerir en esa temporada
+  const seasonEl = document.querySelector('input[name="season"]');
+  const seasonVal = seasonEl && seasonEl.value ? parseInt(seasonEl.value) : null;
+  const params = new URLSearchParams({ title, type });
+  if (seasonVal) params.set('season', seasonVal);
+
+  fetch('/api/entry/hint?' + params)
     .then(r => r.json())
     .then(data => {
       const dl = document.getElementById('titleSuggestions');
       if (dl && data.titles) dl.innerHTML = data.titles.map(t => `<option value="${t}"></option>`).join('');
       if (type.includes('Serie')) {
-        const seasonEl  = document.querySelector('input[name="season"]');
+        const seasonEl2 = document.querySelector('input[name="season"]');
         const episodeEl = document.querySelector('input[name="episode"]');
-        if (seasonEl  && data.season  != null) seasonEl.value  = data.season;
+        if (seasonEl2 && data.season  != null) seasonEl2.value = data.season;
         if (episodeEl && data.episode != null) episodeEl.value = data.episode;
       } else if (type.includes('Libro')) {
         const chapEl = document.querySelector('input[name="chapters"]');
@@ -246,8 +253,10 @@ function _doFetchHint() {
         if (chapEl && data.chapters != null) chapEl.value = data.chapters;
         if (authEl && data.author   != null && authEl.value === '') authEl.value = data.author;
       } else if (type.includes('mic')) {
-        const volEl = document.querySelector('input[name="comicVolume"]');
-        if (volEl && data.comicVolume != null) volEl.value = data.comicVolume;
+        const volEl   = document.querySelector('input[name="comicVolume"]');
+        const issueEl = document.getElementById('comicIssueInput');
+        if (volEl   && data.comicVolume != null) volEl.value   = data.comicVolume;
+        if (issueEl && data.comicIssue  != null) issueEl.value = data.comicIssue;
       }
     })
     .catch(() => {});
@@ -273,7 +282,9 @@ function updateDynamicFields(prefill) {
     const epVal = d.episode != null ? String(d.episode) : '';
     html = `
       <div class="form-row">
-        <div class="form-group"><label>📺 Temporada</label><input type="number" name="season" ${fs} min="1" value="${d.season||''}"/></div>
+        <div class="form-group"><label>📺 Temporada</label>
+          <input type="number" name="season" ${fs} min="1" value="${d.season||''}" oninput="fetchEntryHint()"/>
+        </div>
         <div class="form-group">
           <label>🎞️ Capítulo <small style="color:var(--muted);font-weight:400">(p.ej: 3 ó 3-5 ó 3,4)</small></label>
           <input type="text" name="episode" id="episodeInput" ${fs} placeholder="3 ó 3-5 ó 3,4" value="${epVal}" oninput="previewEpisodes()"/>
@@ -313,9 +324,11 @@ function updateDynamicFields(prefill) {
           <span id="comicIssuePreview" style="font-size:0.75rem;color:var(--accent);margin-top:3px"></span>
         </div>
       </div>
-      <div id="comicChecks" class="check-row" style="display:${single?'none':'flex'}">
+      <div id="comicChecks" class="check-row">
         <label><input type="checkbox" name="finished" value="true" ${d.finished=='true'?'checked':''} onchange="syncStarsVisibility()"/> 📘 Tomo terminado</label>
-        <label><input type="checkbox" name="seriesFinished" value="true" ${d.seriesFinished=='true'?'checked':''} onchange="syncStarsVisibility()"/> 🏆 Serie terminada</label>
+        <th:block id="comicSeriesFinBlock" style="display:${single?'none':'inline'}">
+          <label><input type="checkbox" name="seriesFinished" value="true" ${d.seriesFinished=='true'?'checked':''} onchange="syncStarsVisibility()"/> 🏆 Serie terminada</label>
+        </th:block>
       </div>`;
   }
   if (type) { box.style.display = ''; box.innerHTML = html; }
@@ -366,9 +379,9 @@ function parseIssueRange(val) {
 function toggleComicFields() {
   const single      = document.getElementById('singleVol')?.checked;
   const volumeGroup = document.getElementById('comicVolumeGroup');
-  const checks      = document.getElementById('comicChecks');
-  if (volumeGroup) volumeGroup.style.display = single ? 'none' : 'flex';
-  if (checks)      checks.style.display      = single ? 'none' : 'flex';
+  const seriesFinBlock = document.getElementById('comicSeriesFinBlock');
+  if (volumeGroup)     volumeGroup.style.display     = single ? 'none' : 'flex';
+  if (seriesFinBlock)  seriesFinBlock.style.display  = single ? 'none' : 'inline';
   syncStarsVisibility();
 }
 
