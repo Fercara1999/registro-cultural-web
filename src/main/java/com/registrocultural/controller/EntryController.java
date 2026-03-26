@@ -11,6 +11,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.*;
 import java.time.DayOfWeek;
@@ -93,7 +94,7 @@ public class EntryController {
         return "redirect:/registrar";
     }
 
-    // ── PENDIENTES ────────────────────────────────────────────────
+    // ── PENDIENTES ─────────────────────────────────────────────
 
     @GetMapping("/pendientes")
     public String pendientes(Model model) {
@@ -272,13 +273,41 @@ public class EntryController {
         }
     }
 
+    /**
+     * Descarga una imagen remota y la guarda localmente.
+     * Limpia query-params antes de extraer la extensión.
+     * Si el Content-Type del servidor es image/jpeg o image/png lo usa como fallback.
+     */
     private String downloadRemoteCover(String imageUrl, String coversDir) throws IOException {
         Path dir = Paths.get(coversDir);
         Files.createDirectories(dir);
-        String ext = imageUrl.contains(".") ? imageUrl.substring(imageUrl.lastIndexOf('.')) : ".jpg";
-        if (ext.length() > 5) ext = ".jpg";
+
+        // 1. Abrir conexión para leer Content-Type
+        HttpURLConnection conn = (HttpURLConnection) new URL(imageUrl).openConnection();
+        conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+        conn.setConnectTimeout(8000);
+        conn.setReadTimeout(10000);
+        conn.connect();
+
+        // 2. Determinar extensión: primero por Content-Type, luego por URL sin params
+        String ext = ".jpg";
+        String contentType = conn.getContentType();
+        if (contentType != null) {
+            if (contentType.contains("png"))  ext = ".png";
+            else if (contentType.contains("webp")) ext = ".webp";
+            else if (contentType.contains("gif"))  ext = ".gif";
+            else ext = ".jpg"; // jpeg / octet-stream / desconocido → jpg
+        } else {
+            // Fallback: extraer de la URL quitando query params y fragmentos
+            String path = imageUrl.split("[?#]")[0];
+            if (path.contains(".")) {
+                String candidate = path.substring(path.lastIndexOf('.'));
+                if (candidate.length() <= 5) ext = candidate;
+            }
+        }
+
         String filename = UUID.randomUUID() + ext;
-        try (InputStream in = new URL(imageUrl).openStream()) {
+        try (InputStream in = conn.getInputStream()) {
             Files.copy(in, dir.resolve(filename), StandardCopyOption.REPLACE_EXISTING);
         }
         return filename;
