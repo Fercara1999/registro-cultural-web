@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Inicio | Mi Registro Cultural</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}"/>
+  <style>
+    .home-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      align-items: start;
+    }
+    @media (max-width: 768px) {
+      .home-grid { grid-template-columns: 1fr; }
+    }
+    .home-panel {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 1.2rem 1.4rem;
+      border: 1.5px solid var(--border);
+    }
+    .home-panel h2 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .home-panel .badge {
+      background: var(--accent);
+      color: #fff;
+      border-radius: 20px;
+      padding: 1px 9px;
+      font-size: 0.78rem;
+    }
+    .home-entry-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .home-entry {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      padding: 0.6rem 0.75rem;
+      border-radius: 10px;
+      background: var(--input);
+      border: 1px solid var(--border);
+      transition: border-color 0.2s;
+    }
+    .home-entry:hover { border-color: var(--accent); }
+    .home-entry .cover-thumb {
+      width: 44px;
+      height: 64px;
+      object-fit: cover;
+      border-radius: 6px;
+      flex-shrink: 0;
+      background: var(--border);
+    }
+    .cover-placeholder-sm {
+      width: 44px;
+      height: 64px;
+      border-radius: 6px;
+      background: var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+    .home-entry-info { flex: 1; min-width: 0; }
+    .home-entry-title {
+      font-weight: 600;
+      font-size: 0.92rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .home-entry-meta {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 2px;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .home-entry-actions { display: flex; gap: 0.3rem; flex-shrink: 0; }
+    .empty-msg {
+      color: var(--muted);
+      font-size: 0.88rem;
+      text-align: center;
+      padding: 1.5rem 0;
+    }
+    .week-label {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand">📚 Mi Registro Cultural</div>
+  <div class="nav-links">
+    <a th:href="@{/home}" class="active">🏠 Inicio</a>
+    <a th:href="@{/}">📝 Registrar</a>
+    <a th:href="@{/buscar}">🔍 Buscar</a>
+    <a th:href="@{/estadisticas}">📊 Estadísticas</a>
+  </div>
+  <button class="theme-btn" onclick="toggleTheme()">🌙</button>
+</nav>
+
+<main class="main-content">
+  <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+
+  <div class="home-grid">
+
+    <!-- PANEL IZQUIERDO: registros recientes -->
+    <div class="home-panel">
+      <h2>🕒 Últimos registros <span class="badge" th:text="${recentEntries.size()}">0</span></h2>
+      <div class="home-entry-list" th:if="${not #lists.isEmpty(recentEntries)}">
+        <div th:each="entry : ${recentEntries}" class="home-entry">
+          <img th:if="${entry.coverPath}"
+               th:src="@{/covers/{f}(f=${entry.coverPath})}"
+               class="cover-thumb" alt="portada"/>
+          <div th:unless="${entry.coverPath}" class="cover-placeholder-sm">📷</div>
+          <div class="home-entry-info">
+            <div class="home-entry-title" th:text="${entry.title}"></div>
+            <div class="home-entry-meta">
+              <span th:text="${entry.type}"></span>
+              <span th:text="'📅 ' + ${entry.date}"></span>
+              <span th:if="${entry.rating != null and entry.rating > 0}"
+                    th:text="'⭐ ' + ${entry.rating} + '/10'"></span>
+            </div>
+          </div>
+          <div class="home-entry-actions">
+            <a th:href="@{/editar/{id}(id=${entry.id})}" class="btn-icon" title="Editar">✏️</a>
+            <form th:action="@{/eliminar/{id}(id=${entry.id})}" method="post"
+                  onsubmit="return confirm('¿Eliminar este registro?')">
+              <button type="submit" class="btn-icon" title="Eliminar">🗑️</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div th:if="${#lists.isEmpty(recentEntries)}" class="empty-msg">Sin registros aún</div>
+    </div>
+
+    <!-- PANEL DERECHO: registros de la semana actual (lunes-domingo) -->
+    <div class="home-panel">
+      <h2>📆 Esta semana <span class="badge" th:text="${weekEntries.size()}">0</span></h2>
+      <div class="week-label"
+           th:text="'Del ' + ${weekStart} + ' al ' + ${weekEnd}"></div>
+      <div class="home-entry-list" th:if="${not #lists.isEmpty(weekEntries)}">
+        <div th:each="entry : ${weekEntries}" class="home-entry">
+          <img th:if="${entry.coverPath}"
+               th:src="@{/covers/{f}(f=${entry.coverPath})}"
+               class="cover-thumb" alt="portada"/>
+          <div th:unless="${entry.coverPath}" class="cover-placeholder-sm">📷</div>
+          <div class="home-entry-info">
+            <div class="home-entry-title" th:text="${entry.title}"></div>
+            <div class="home-entry-meta">
+              <span th:text="${entry.type}"></span>
+              <span th:text="'📅 ' + ${entry.date}"></span>
+              <span th:if="${entry.rating != null and entry.rating > 0}"
+                    th:text="'⭐ ' + ${entry.rating} + '/10'"></span>
+            </div>
+          </div>
+          <div class="home-entry-actions">
+            <a th:href="@{/editar/{id}(id=${entry.id})}" class="btn-icon" title="Editar">✏️</a>
+            <form th:action="@{/eliminar/{id}(id=${entry.id})}" method="post"
+                  onsubmit="return confirm('¿Eliminar este registro?')">
+              <button type="submit" class="btn-icon" title="Eliminar">🗑️</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div th:if="${#lists.isEmpty(weekEntries)}" class="empty-msg">Sin registros esta semana</div>
+    </div>
+
+  </div>
+</main>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>
