@@ -22,7 +22,6 @@
   </properties>
 
   <dependencies>
-    <!-- Spring Boot Web + Thymeleaf -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
@@ -31,11 +30,15 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-thymeleaf</artifactId>
     </dependency>
-
-    <!-- Spring Data JPA -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+
+    <!-- WebClient para llamadas a TMDB / Google Books -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-webflux</artifactId>
     </dependency>
 
     <!-- SQLite -->
@@ -49,7 +52,6 @@
       <artifactId>hibernate-community-dialects</artifactId>
     </dependency>
 
-    <!-- Para subida de archivos -->
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>

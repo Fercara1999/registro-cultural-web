@@ -10,8 +10,12 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.nio.file.*;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @Controller
 public class EntryController {
@@ -22,7 +26,6 @@ public class EntryController {
         this.service = service;
     }
 
-    // ── Inicio: lista todos ─────────────────────────────────────────
     @GetMapping("/")
     public String index(Model model) {
         model.addAttribute("entries", service.getAll());
@@ -30,7 +33,6 @@ public class EntryController {
         return "index";
     }
 
-    // ── Registrar nuevo ─────────────────────────────────────────────
     @PostMapping("/registrar")
     public String registrar(
             @RequestParam String title,
@@ -52,6 +54,7 @@ public class EntryController {
             @RequestParam(required = false) Boolean seasonFinished,
             @RequestParam(required = false) Boolean seriesFinished,
             @RequestParam(required = false) MultipartFile cover,
+            @RequestParam(required = false) String autoCoverUrl,
             RedirectAttributes ra) {
 
         Entry entry = new Entry();
@@ -74,9 +77,17 @@ public class EntryController {
         entry.setSeasonFinished(seasonFinished);
         entry.setSeriesFinished(Boolean.TRUE.equals(isSingleVolume) ? null : seriesFinished);
 
+        // 1) Portada subida manualmente tiene prioridad
         if (cover != null && !cover.isEmpty()) {
             try { entry.setCoverPath(service.saveCover(cover)); }
             catch (IOException e) { ra.addFlashAttribute("error", "No se pudo guardar la portada"); }
+        }
+        // 2) Si no hay portada manual, usar la de TMDB/Google Books
+        else if (autoCoverUrl != null && !autoCoverUrl.isBlank()) {
+            try {
+                String filename = downloadRemoteCover(autoCoverUrl, service.getCoversDir());
+                entry.setCoverPath(filename);
+            } catch (IOException e) { /* sin portada */ }
         }
 
         service.save(entry);
@@ -84,7 +95,6 @@ public class EntryController {
         return "redirect:/";
     }
 
-    // ── Formulario edición ──────────────────────────────────────────
     @GetMapping("/editar/{id}")
     public String editarForm(@PathVariable Integer id, Model model) {
         return service.getById(id).map(e -> {
@@ -93,7 +103,6 @@ public class EntryController {
         }).orElse("redirect:/");
     }
 
-    // ── Guardar edición ─────────────────────────────────────────────
     @PostMapping("/editar/{id}")
     public String editarSave(
             @PathVariable Integer id,
@@ -116,6 +125,7 @@ public class EntryController {
             @RequestParam(required = false) Boolean seasonFinished,
             @RequestParam(required = false) Boolean seriesFinished,
             @RequestParam(required = false) MultipartFile cover,
+            @RequestParam(required = false) String autoCoverUrl,
             RedirectAttributes ra) {
 
         service.getById(id).ifPresent(entry -> {
@@ -138,8 +148,12 @@ public class EntryController {
             entry.setSeasonFinished(seasonFinished);
             entry.setSeriesFinished(Boolean.TRUE.equals(isSingleVolume) ? null : seriesFinished);
             if (cover != null && !cover.isEmpty()) {
-                try { entry.setCoverPath(service.saveCover(cover)); }
-                catch (IOException e) { /* log */ }
+                try { entry.setCoverPath(service.saveCover(cover)); } catch (IOException e) { /* log */ }
+            } else if (autoCoverUrl != null && !autoCoverUrl.isBlank()) {
+                try {
+                    String filename = downloadRemoteCover(autoCoverUrl, service.getCoversDir());
+                    entry.setCoverPath(filename);
+                } catch (IOException e) { /* sin portada */ }
             }
             service.save(entry);
         });
@@ -147,7 +161,6 @@ public class EntryController {
         return "redirect:/";
     }
 
-    // ── Eliminar ────────────────────────────────────────────────────
     @PostMapping("/eliminar/{id}")
     public String eliminar(@PathVariable Integer id, RedirectAttributes ra) {
         service.delete(id);
@@ -155,7 +168,6 @@ public class EntryController {
         return "redirect:/";
     }
 
-    // ── Búsqueda ────────────────────────────────────────────────────
     @GetMapping("/buscar")
     public String buscar(
             @RequestParam(required = false) String title,
@@ -163,25 +175,37 @@ public class EntryController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             Model model) {
         List<Entry> results = service.search(title, type, date);
-        model.addAttribute("entries",    results);
+        model.addAttribute("entries",     results);
         model.addAttribute("searchTitle", title);
         model.addAttribute("searchType",  type);
         model.addAttribute("searchDate",  date);
         return "buscar";
     }
 
-    // ── Estadísticas ────────────────────────────────────────────────
     @GetMapping("/estadisticas")
     public String estadisticas(@RequestParam(required = false, defaultValue = "mes") String period, Model model) {
         model.addAllAttributes(service.getStats(period));
         return "estadisticas";
     }
 
-    // ── Portadas (servir imagen) ────────────────────────────────────
     @GetMapping("/covers/{filename}")
     @ResponseBody
     public org.springframework.core.io.Resource serveFile(@PathVariable String filename) throws IOException {
-        java.nio.file.Path file = java.nio.file.Paths.get("covers").resolve(filename);
+        java.nio.file.Path file = java.nio.file.Paths.get(service.getCoversDir()).resolve(filename);
         return new org.springframework.core.io.UrlResource(file.toUri());
+    }
+
+    /** Descarga una imagen remota y la guarda en el directorio de portadas */
+    private String downloadRemoteCover(String imageUrl, String coversDir) throws IOException {
+        Path dir = Paths.get(coversDir);
+        Files.createDirectories(dir);
+        String ext = imageUrl.contains(".") ? imageUrl.substring(imageUrl.lastIndexOf('.')) : ".jpg";
+        if (ext.length() > 5) ext = ".jpg";
+        String filename = UUID.randomUUID() + ext;
+        Path dest = dir.resolve(filename);
+        try (InputStream in = new URL(imageUrl).openStream()) {
+            Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
+        }
+        return filename;
     }
 }

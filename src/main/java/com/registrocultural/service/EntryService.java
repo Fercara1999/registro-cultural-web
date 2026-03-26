@@ -24,6 +24,8 @@ public class EntryService {
         this.repo = repo;
     }
 
+    public String getCoversDir() { return coversDir; }
+
     public List<Entry> getAll() {
         return repo.findAllByOrderByDateDescIdDesc();
     }
@@ -53,8 +55,7 @@ public class EntryService {
     }
 
     public List<String> getTitleSuggestions(String type) {
-        String pattern = type == null ? "" : type;
-        return repo.findDistinctTitlesByType(pattern);
+        return repo.findDistinctTitlesByType(type != null ? type : "");
     }
 
     public String getAuthorForTitle(String title) {
@@ -76,7 +77,6 @@ public class EntryService {
         return repo.findCinemaMovies();
     }
 
-    /** Guarda una portada subida y devuelve la ruta relativa */
     public String saveCover(MultipartFile file) throws IOException {
         Path dir = Paths.get(coversDir);
         Files.createDirectories(dir);
@@ -86,7 +86,6 @@ public class EntryService {
         return filename;
     }
 
-    // ── Estadísticas ───────────────────────────────────────────────
     public Map<String, Object> getStats(String period) {
         List<Entry> all = repo.findAllByOrderByDateDescIdDesc();
         LocalDate now  = LocalDate.now();
@@ -94,7 +93,7 @@ public class EntryService {
             case "semana" -> now.minusDays(now.getDayOfWeek().getValue() - 1);
             case "anio"   -> now.withDayOfYear(1);
             case "todo"   -> LocalDate.of(2000, 1, 1);
-            default       -> now.withDayOfMonth(1); // mes
+            default       -> now.withDayOfMonth(1);
         };
 
         List<Entry> filtered = all.stream()
@@ -102,18 +101,17 @@ public class EntryService {
                 .collect(Collectors.toList());
 
         Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("total",        filtered.size());
-        stats.put("totalAll",     all.size());
-        stats.put("libros",       count(filtered, "Libro"));
-        stats.put("series",       count(filtered, "Serie"));
-        stats.put("peliculas",    count(filtered, "Pel"));
-        stats.put("teatro",       count(filtered, "Teatro"));
-        stats.put("comics",       count(filtered, "mic"));
-        stats.put("cine",         filtered.stream().filter(e -> Boolean.TRUE.equals(e.getSeenInCinema())).count());
-        stats.put("cineTotal",    all.stream().filter(e -> Boolean.TRUE.equals(e.getSeenInCinema())).count());
-        stats.put("cinemaList",   repo.findCinemaMovies());
+        stats.put("total",      filtered.size());
+        stats.put("totalAll",   all.size());
+        stats.put("libros",     count(filtered, "Libro"));
+        stats.put("series",     count(filtered, "Serie"));
+        stats.put("peliculas",  count(filtered, "Pel"));
+        stats.put("teatro",     count(filtered, "Teatro"));
+        stats.put("comics",     count(filtered, "mic"));
+        stats.put("cine",       filtered.stream().filter(e -> Boolean.TRUE.equals(e.getSeenInCinema())).count());
+        stats.put("cineTotal",  all.stream().filter(e -> Boolean.TRUE.equals(e.getSeenInCinema())).count());
+        stats.put("cinemaList", repo.findCinemaMovies());
 
-        // Por tipo
         Map<String, Long> porTipo = new LinkedHashMap<>();
         porTipo.put("Libro",    count(filtered, "Libro"));
         porTipo.put("Serie",    count(filtered, "Serie"));
@@ -122,20 +120,18 @@ public class EntryService {
         porTipo.put("Cómic",    count(filtered, "mic"));
         stats.put("porTipo", porTipo);
 
-        // Actividad mensual
         Map<String, Long> porMes = new TreeMap<>(filtered.stream().collect(
                 Collectors.groupingBy(
                     e -> e.getDate().getYear() + "-" + String.format("%02d", e.getDate().getMonthValue()),
                     Collectors.counting())));
         stats.put("porMes", porMes);
 
-        // Por día de la semana
         String[] dias = {"Lun","Mar","Mié","Jue","Vie","Sáb","Dom"};
         long[] porDia = new long[7];
         for (Entry e : filtered) porDia[e.getDate().getDayOfWeek().getValue() - 1]++;
-        stats.put("porDia",      porDia);
-        stats.put("diasLabels",  dias);
-        stats.put("period",      period != null ? period : "mes");
+        stats.put("porDia",     porDia);
+        stats.put("diasLabels", dias);
+        stats.put("period",     period != null ? period : "mes");
         return stats;
     }
 
