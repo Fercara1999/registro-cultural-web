@@ -23,7 +23,8 @@
   <section class="card form-card">
     <h2>📝 Registrar nueva entrada</h2>
     <form action="/registrar" method="post" enctype="multipart/form-data" id="registerForm">
-      <input type="hidden" name="autoCoverUrl" id="autoCoverUrl" value=""/>
+      <input type="hidden" name="autoCoverUrl"      id="autoCoverUrl"      value=""/>
+      <input type="hidden" name="existingCoverPath" id="existingCoverPath" value=""/>
       <div class="form-row">
         <div class="form-group flex-grow">
           <label>Título</label>
@@ -53,7 +54,7 @@
       </div>
       <div class="form-row align-end">
 
-        <!-- Zona drag & drop de portada -->
+        <!-- Zona drag &amp; drop de portada -->
         <div class="form-group">
           <label>Portada (arrastra desde web o elige archivo)</label>
           <div id="coverDropZone" class="cover-drop-zone" onclick="document.getElementById('coverFileInput').click()">
