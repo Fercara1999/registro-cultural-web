@@ -16,7 +16,7 @@ function toggleTheme() {
   }
 })();
 
-// ── ESTRELLAS (se muestran/ocultan según checkbox terminado) ────────────
+// ── ESTRELLAS ─────────────────────────────────────────────────
 function initStars(initial) {
   const row   = document.getElementById('starRow');
   const input = document.getElementById('ratingInput');
@@ -43,25 +43,20 @@ function initStars(initial) {
   }
 }
 
-/** Muestra u oculta el bloque de valoración según si hay checkbox terminado marcado.
- *  Si el tipo no tiene checkbox terminado (Película, Teatro), siempre visible. */
 function syncStarsVisibility() {
   const ratingBlock = document.getElementById('ratingBlock');
   if (!ratingBlock) return;
-  // Checkboxes que "habilitan" la valoración
-  const finishedCb     = document.querySelector('input[name="finished"]');
-  const seriesFinCb    = document.querySelector('input[name="seriesFinished"]');
-  const seasonFinCb    = document.querySelector('input[name="seasonFinished"]');
+  const finishedCb  = document.querySelector('input[name="finished"]');
+  const seriesFinCb = document.querySelector('input[name="seriesFinished"]');
+  const seasonFinCb = document.querySelector('input[name="seasonFinished"]');
   const hasDoneCheckbox = finishedCb || seriesFinCb || seasonFinCb;
   if (!hasDoneCheckbox) {
-    // Tipos sin checkbox (Película, Teatro): siempre visible
     ratingBlock.style.display = '';
     return;
   }
   const done = (finishedCb?.checked) || (seriesFinCb?.checked) || (seasonFinCb?.checked);
   ratingBlock.style.display = done ? '' : 'none';
   if (!done) {
-    // Resetear valoración al ocultar
     const input = document.getElementById('ratingInput');
     const label = document.getElementById('ratingVal');
     if (input) input.value = 0;
@@ -73,7 +68,6 @@ function syncStarsVisibility() {
 document.addEventListener('DOMContentLoaded', () => {
   initStars();
   syncStarsVisibility();
-  // Escuchar cambios en checkboxes del DOM y de futuros campos dinámicos
   document.addEventListener('change', e => {
     const n = e.target?.name;
     if (n === 'finished' || n === 'seriesFinished' || n === 'seasonFinished') {
@@ -82,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// ── PORTADA AUTOMÁTICA ───────────────────────────────────────────────
+// ── PORTADA AUTOMÁTICA ─────────────────────────────────────────
 let coverDebounce = null;
 
 function fetchAutoCover() {
@@ -116,6 +110,10 @@ function _doFetchCover() {
 }
 
 function _showCoverPreview(url) {
+  // Actualizar el campo hidden fijo del form
+  const hiddenInput = document.getElementById('autoCoverUrl');
+  if (hiddenInput) hiddenInput.value = url;
+
   let box = document.getElementById('autoCoverBox');
   if (!box) {
     box = document.createElement('div');
@@ -128,25 +126,27 @@ function _showCoverPreview(url) {
         <div style="flex:1">
           <div style="font-size:0.85rem;font-weight:600;color:var(--accent)">🎨 Portada encontrada automáticamente</div>
           <div style="font-size:0.78rem;color:var(--muted);margin-top:4px">Se usará esta imagen al guardar.</div>
-          <input type="hidden" name="autoCoverUrl" id="autoCoverUrl" value=""/>
           <button type="button" onclick="_hideCoverPreview()"
                   style="margin-top:8px;font-size:0.78rem;background:transparent;border:1px solid var(--muted);border-radius:6px;padding:2px 10px;color:var(--muted);cursor:pointer;">✖ No usar esta portada</button>
         </div>
       </div>`;
+    // Insertar el preview antes del input de fichero
     const fileGroup = document.querySelector('input[type="file"]')?.closest('.form-group');
     if (fileGroup) fileGroup.parentNode.insertBefore(box, fileGroup);
   }
   document.getElementById('autoCoverImg').src = url;
-  document.getElementById('autoCoverUrl').value = url;
   box.style.display = 'block';
 }
 
 function _hideCoverPreview() {
   const box = document.getElementById('autoCoverBox');
-  if (box) { box.style.display = 'none'; const inp = document.getElementById('autoCoverUrl'); if (inp) inp.value = ''; }
+  if (box) box.style.display = 'none';
+  // Limpiar el campo hidden fijo
+  const hiddenInput = document.getElementById('autoCoverUrl');
+  if (hiddenInput) hiddenInput.value = '';
 }
 
-// ── CAMPOS DINÁMICOS (formulario REGISTRAR) ──────────────────────────────
+// ── CAMPOS DINÁMICOS (formulario REGISTRAR) ────────────────────────
 function updateDynamicFields(prefill) {
   const sel = document.getElementById('typeSelect');
   const box = document.getElementById('dynamicFields');
@@ -199,9 +199,10 @@ function updateDynamicFields(prefill) {
       </div>`;
   }
   box.innerHTML = html;
-  _hideCoverPreview();
-  // Re-sincronizar visibilidad de estrellas tras regenerar campos
+  // NO llamar a _hideCoverPreview() aquí: el valor ya está en el campo hidden fijo del form
   syncStarsVisibility();
+  // Relanzar búsqueda de portada con el título actual
+  fetchAutoCover();
 }
 
 function toggleComicFields() {
@@ -213,7 +214,7 @@ function toggleComicFields() {
   syncStarsVisibility();
 }
 
-// ── CAMPOS DINÁMICOS (formulario PENDIENTES) ─────────────────────────────
+// ── CAMPOS DINÁMICOS (formulario PENDIENTES) ───────────────────────
 function updateDynamicFieldsPending() {
   const sel = document.getElementById('typeSelectPending');
   const box = document.getElementById('dynamicFieldsPending');
@@ -223,16 +224,17 @@ function updateDynamicFieldsPending() {
   let html = '';
   if (type.includes('Libro')) {
     html = `<div class="form-row"><div class="form-group flex-grow"><label>✍️ Autor</label><input type="text" name="author" ${fs} oninput="fetchAutoCover()"/></div></div>`;
+  } else if (type.includes('Serie')) {
+    html = `<div class="form-row"><div class="form-group flex-grow"><label>📺 Título exacto</label><input type="text" name="seriesHint" ${fs} oninput="fetchAutoCover()"/></div></div>`;
   } else if (type.includes('Pel')) {
     html = `<div class="form-row"><div class="form-group flex-grow"><label>🎬 Director</label><input type="text" name="director" ${fs} oninput="fetchAutoCover()"/></div></div>`;
   } else if (type.includes('Teatro')) {
     html = `<div class="form-row"><div class="form-group flex-grow"><label>🎤 Lugar</label><input type="text" name="venue" ${fs}/></div></div>`;
   }
   box.innerHTML = html;
-  _hideCoverPreview();
 }
 
-// ── DOMContentLoaded ────────────────────────────────────────────────
+// ── DOMContentLoaded ──────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   updateDynamicFields();
   updateDynamicFieldsPending();
@@ -246,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeElP) typeElP.addEventListener('change', () => { _hideCoverPreview(); setTimeout(fetchAutoCover, 300); });
 });
 
-// ── EDIT FORM ─────────────────────────────────────────────────────────
+// ── EDIT FORM ─────────────────────────────────────────────────────
 function initEditForm() {
   const box = document.getElementById('dynamicFields');
   if (!box) return;
