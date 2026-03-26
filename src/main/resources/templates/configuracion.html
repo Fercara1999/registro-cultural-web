@@ -1,14 +1,32 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{fragments/layout :: layout('Configuración', ~{::main-content})}">
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Configuración | Mi Registro Cultural</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}"/>
+</head>
 <body>
-<main-content>
+<nav class="navbar">
+  <a th:href="@{/}" class="nav-brand">📚 Mi Registro Cultural</a>
+  <div class="nav-links">
+    <a th:href="@{/home}">🏠 Inicio</a>
+    <a th:href="@{/registrar}">📝 Registrar</a>
+    <a th:href="@{/pendientes}">⏳ Pendientes</a>
+    <a th:href="@{/buscar}">🔍 Buscar</a>
+    <a th:href="@{/estadisticas}">📊 Estadísticas</a>
+    <a th:href="@{/configuracion}" class="active">⚙️ Configuración</a>
+  </div>
+  <button class="theme-btn" onclick="toggleTheme()">🌙</button>
+</nav>
+<main class="main-content">
+  <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+  <div th:if="${error}"   class="alert alert-error"   th:text="${error}"></div>
 
   <div style="max-width:720px;margin:0 auto;padding:24px 16px">
     <h1 style="font-size:1.6rem;font-weight:700;margin-bottom:6px">⚙️ Configuración</h1>
     <p style="color:var(--muted);margin-bottom:28px;font-size:.93rem">Herramientas de mantenimiento y exportación de datos.</p>
 
-    <!-- Info general -->
     <div style="display:flex;gap:16px;margin-bottom:28px;flex-wrap:wrap">
       <div class="stat-card" style="flex:1;min-width:160px">
         <div class="stat-number" th:text="${totalEntries}">0</div>
@@ -24,7 +42,6 @@
       </div>
     </div>
 
-    <!-- Tarjeta: Optimizar portadas -->
     <div class="card" style="margin-bottom:20px;padding:24px">
       <div style="display:flex;align-items:flex-start;gap:16px">
         <div style="font-size:2.4rem;line-height:1">🖼️</div>
@@ -37,16 +54,15 @@
           </p>
           <form method="post" th:action="@{/configuracion/optimizar-portadas}"
                 onsubmit="return confirmOptimize()">
-            <button type="submit" class="btn-primary"
+            <button type="submit" class="btn btn-primary"
                     style="display:inline-flex;align-items:center;gap:8px">
-              🗜️ Optimizar ahora
+              🗃️ Optimizar ahora
             </button>
           </form>
         </div>
       </div>
     </div>
 
-    <!-- Tarjeta: Exportar CSV -->
     <div class="card" style="padding:24px">
       <div style="display:flex;align-items:flex-start;gap:16px">
         <div style="font-size:2.4rem;line-height:1">📥</div>
@@ -59,10 +75,10 @@
           </p>
           <p style="color:var(--muted);font-size:.82rem;margin:0 0 16px">
             Columnas: id · título · tipo · descripción · fecha · valoración · capítulos · autor ·
-            temporada · capítulo · lugar · director · vistaCine · tomoÚnico · numTomo · numSerie ·
+            temporada · capítulo · lugar · director · vistaCine · tomúÚnico · numTomo · numSerie ·
             terminado · finTemporada · serieFinalizada · pendiente
           </p>
-          <a th:href="@{/configuracion/exportar-csv}" class="btn-primary"
+          <a th:href="@{/configuracion/exportar-csv}" class="btn btn-primary"
              style="display:inline-flex;align-items:center;gap:8px;text-decoration:none">
             📄 Descargar CSV
           </a>
@@ -76,7 +92,7 @@
       return confirm('¿Optimizar todas las portadas? Esta acción es irreversible.');
     }
   </script>
-
-</main-content>
+</main>
+<script th:src="@{/js/app.js}"></script>
 </body>
 </html>

@@ -16,6 +16,7 @@
     <a th:href="@{/pendientes}">⏳ Pendientes</a>
     <a th:href="@{/buscar}">🔍 Buscar</a>
     <a th:href="@{/estadisticas}" class="active">📊 Estadísticas</a>
+    <a th:href="@{/configuracion}">⚙️ Configuración</a>
   </div>
   <button class="theme-btn" onclick="toggleTheme()">🌙</button>
 </nav>
@@ -58,7 +59,7 @@
     <div class="kpi kpi-warn">   <span class="kpi-icon">📺</span><span class="kpi-val" th:text="${seriesEnCurso}">0</span>  <span class="kpi-lbl">en curso</span></div>
     <div class="kpi kpi-accent"> <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>   <span class="kpi-lbl">nota media</span></div>
   </div>
-  <div class="kpi-row" th:if="${selectedTipo=='Pel\u00edcula'}">
+  <div class="kpi-row" th:if="${selectedTipo=='Película'}">
     <div class="kpi kpi-cinema"><span class="kpi-icon">🎫</span><span class="kpi-val" th:text="${pelisEnCine}">0</span> <span class="kpi-lbl">en cine</span></div>
     <div class="kpi kpi-accent"><span class="kpi-icon">📺</span><span class="kpi-val" th:text="${pelisEnCasa}">0</span><span class="kpi-lbl">en casa</span></div>
     <div class="kpi kpi-warn">  <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>  <span class="kpi-lbl">nota media</span></div>
@@ -67,7 +68,7 @@
     <div class="kpi kpi-accent"> <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>      <span class="kpi-lbl">nota media</span></div>
     <div class="kpi kpi-purple"><span class="kpi-icon">🎭</span><span class="kpi-val" th:text="${lugaresDistintos}">0</span><span class="kpi-lbl">lugares distintos</span></div>
   </div>
-  <div class="kpi-row" th:if="${selectedTipo=='C\u00f3mic'}">
+  <div class="kpi-row" th:if="${selectedTipo=='Cómic'}">
     <div class="kpi kpi-success"><span class="kpi-icon">✅</span><span class="kpi-val" th:text="${comicsTerminados}">0</span><span class="kpi-lbl">terminados</span></div>
     <div class="kpi kpi-warn">   <span class="kpi-icon">💭</span><span class="kpi-val" th:text="${comicsEnCurso}">0</span>  <span class="kpi-lbl">en curso</span></div>
     <div class="kpi kpi-accent"> <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>   <span class="kpi-lbl">nota media</span></div>
