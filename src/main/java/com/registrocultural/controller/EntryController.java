@@ -66,13 +66,13 @@ public class EntryController {
             @RequestParam(required = false) Integer chapters,
             @RequestParam(required = false) String author,
             @RequestParam(required = false) Integer season,
-            @RequestParam(required = false) Integer episode,
+            @RequestParam(required = false) String episode,      // String: admite rangos
             @RequestParam(required = false) String venue,
             @RequestParam(required = false) String director,
             @RequestParam(required = false) Boolean seenInCinema,
             @RequestParam(required = false) Boolean isSingleVolume,
             @RequestParam(required = false) Integer comicVolume,
-            @RequestParam(required = false) String comicIssue,   // ahora String para admitir rangos
+            @RequestParam(required = false) String comicIssue,   // String: admite rangos
             @RequestParam(required = false) Boolean finished,
             @RequestParam(required = false) Boolean seasonFinished,
             @RequestParam(required = false) Boolean seriesFinished,
@@ -80,44 +80,61 @@ public class EntryController {
             @RequestParam(required = false) String autoCoverUrl,
             RedirectAttributes ra) {
 
-        List<Integer> issues = parseIssueRange(comicIssue);
+        LocalDate d = date != null ? date : LocalDate.now();
+        List<Integer> episodes = parseIssueRange(episode);
+        List<Integer> issues   = parseIssueRange(comicIssue);
 
-        if (issues.size() <= 1) {
-            // Caso normal: 0 o 1 número
-            Integer issueInt = issues.isEmpty() ? null : issues.get(0);
-            Entry entry = buildEntry(title, type, description, date != null ? date : LocalDate.now(),
-                rating, chapters, author, season, episode, venue, director,
-                seenInCinema, isSingleVolume, comicVolume, issueInt, finished, seasonFinished, seriesFinished);
+        boolean multiEpisode = episodes.size() > 1;
+        boolean multiIssue   = issues.size()   > 1;
+
+        if (!multiEpisode && !multiIssue) {
+            // Caso normal: un solo registro
+            Integer epInt    = episodes.isEmpty() ? null : episodes.get(0);
+            Integer issueInt = issues.isEmpty()   ? null : issues.get(0);
+            Entry entry = buildEntry(title, type, description, d, rating, chapters, author,
+                season, epInt, venue, director, seenInCinema, isSingleVolume,
+                comicVolume, issueInt, finished, seasonFinished, seriesFinished);
             entry.setPending(false);
             saveCoverToEntry(entry, cover, autoCoverUrl, ra);
             service.save(entry);
-            ra.addFlashAttribute("success", "\u2705 Entrada registrada correctamente");
+            ra.addFlashAttribute("success", "✅ Entrada registrada correctamente");
+
         } else {
-            // Múltiples números: crear un registro por cada uno
-            String coverPath = null;
-            // Resolver portada una sola vez
-            if (cover != null && !cover.isEmpty()) {
-                try { coverPath = service.saveCover(cover); } catch (IOException e) { /* sin portada */ }
-            } else if (autoCoverUrl != null && !autoCoverUrl.isBlank()) {
-                try { coverPath = downloadRemoteCover(autoCoverUrl, service.getCoversDir()); } catch (IOException e) { /* sin portada */ }
+            // Múltiples episodios O múltiples números de serie: resolver portada una sola vez
+            String coverPath = resolveCoverPath(cover, autoCoverUrl);
+
+            if (multiEpisode) {
+                for (Integer epNum : episodes) {
+                    Entry entry = buildEntry(title, type, description, d, rating, chapters, author,
+                        season, epNum, venue, director, seenInCinema, isSingleVolume,
+                        comicVolume, issues.isEmpty() ? null : issues.get(0),
+                        finished, seasonFinished, seriesFinished);
+                    entry.setPending(false);
+                    entry.setCoverPath(coverPath);
+                    service.save(entry);
+                }
+                ra.addFlashAttribute("success", "✅ " + episodes.size() + " registros creados (cap. " +
+                    episodes.get(0) + "–" + episodes.get(episodes.size()-1) + ")");
+            } else {
+                // multiIssue (cómic)
+                for (Integer issueNum : issues) {
+                    Entry entry = buildEntry(title, type, description, d, rating, chapters, author,
+                        season, episodes.isEmpty() ? null : episodes.get(0), venue, director,
+                        seenInCinema, isSingleVolume, comicVolume, issueNum,
+                        finished, seasonFinished, seriesFinished);
+                    entry.setPending(false);
+                    entry.setCoverPath(coverPath);
+                    service.save(entry);
+                }
+                ra.addFlashAttribute("success", "✅ " + issues.size() + " registros creados (nº " +
+                    issues.get(0) + "–" + issues.get(issues.size()-1) + ")");
             }
-            LocalDate d = date != null ? date : LocalDate.now();
-            for (Integer issueNum : issues) {
-                Entry entry = buildEntry(title, type, description, d,
-                    rating, chapters, author, season, episode, venue, director,
-                    seenInCinema, isSingleVolume, comicVolume, issueNum, finished, seasonFinished, seriesFinished);
-                entry.setPending(false);
-                entry.setCoverPath(coverPath);
-                service.save(entry);
-            }
-            ra.addFlashAttribute("success", "\u2705 " + issues.size() + " registros creados (n\u00ba " +
-                issues.get(0) + "\u2013" + issues.get(issues.size()-1) + ")");
         }
 
         return "redirect:/registrar";
     }
 
-    // ── PENDIENTES ───────────────────────────────────────────
+    // ── PENDIENTES ───────────────────────────────────────────────
 
     @GetMapping("/pendientes")
     public String pendientes(Model model) {
@@ -143,7 +160,7 @@ public class EntryController {
         entry.setVenue(venue); entry.setPending(true);
         saveCoverToEntry(entry, cover, autoCoverUrl, ra);
         service.save(entry);
-        ra.addFlashAttribute("success", "\u23f3 Pendiente a\u00f1adido correctamente");
+        ra.addFlashAttribute("success", "⏳ Pendiente añadido correctamente");
         return "redirect:/pendientes";
     }
 
@@ -152,11 +169,11 @@ public class EntryController {
         service.getById(id).ifPresent(e -> {
             e.setPending(false); e.setDate(LocalDate.now()); service.save(e);
         });
-        ra.addFlashAttribute("success", "\u2705 Marcado como visto y movido a registros");
+        ra.addFlashAttribute("success", "✅ Marcado como visto y movido a registros");
         return "redirect:/pendientes";
     }
 
-    // ── EDITAR / ELIMINAR ─────────────────────────────────────────
+    // ── EDITAR / ELIMINAR ────────────────────────────────────────
 
     @GetMapping("/editar/{id}")
     public String editarForm(@PathVariable Integer id, Model model) {
@@ -175,13 +192,13 @@ public class EntryController {
             @RequestParam(required = false) Integer chapters,
             @RequestParam(required = false) String author,
             @RequestParam(required = false) Integer season,
-            @RequestParam(required = false) Integer episode,
+            @RequestParam(required = false) String episode,
             @RequestParam(required = false) String venue,
             @RequestParam(required = false) String director,
             @RequestParam(required = false) Boolean seenInCinema,
             @RequestParam(required = false) Boolean isSingleVolume,
             @RequestParam(required = false) Integer comicVolume,
-            @RequestParam(required = false) String comicIssue,   // String también en editar
+            @RequestParam(required = false) String comicIssue,
             @RequestParam(required = false) Boolean finished,
             @RequestParam(required = false) Boolean seasonFinished,
             @RequestParam(required = false) Boolean seriesFinished,
@@ -189,15 +206,18 @@ public class EntryController {
             @RequestParam(required = false) String autoCoverUrl,
             RedirectAttributes ra) {
 
-        // En editar siempre es un único número (se toma el primero si se mete rango)
-        List<Integer> issues = parseIssueRange(comicIssue);
-        Integer issueInt = issues.isEmpty() ? null : issues.get(0);
+        // En editar siempre se toma el primer número si viene rango
+        List<Integer> episodes = parseIssueRange(episode);
+        List<Integer> issues   = parseIssueRange(comicIssue);
+        Integer epInt    = episodes.isEmpty() ? null : episodes.get(0);
+        Integer issueInt = issues.isEmpty()   ? null : issues.get(0);
 
         service.getById(id).ifPresent(entry -> {
             entry.setTitle(title.trim()); entry.setType(type); entry.setDescription(description);
             entry.setDate(date != null ? date : LocalDate.now());
             entry.setRating(rating); entry.setChapters(chapters); entry.setAuthor(author);
-            entry.setSeason(season); entry.setEpisode(episode); entry.setVenue(venue); entry.setDirector(director);
+            entry.setSeason(season); entry.setEpisode(epInt);
+            entry.setVenue(venue); entry.setDirector(director);
             entry.setSeenInCinema(Boolean.TRUE.equals(seenInCinema));
             entry.setIsSingleVolume(Boolean.TRUE.equals(isSingleVolume));
             entry.setComicVolume(Boolean.TRUE.equals(isSingleVolume) ? null : comicVolume);
@@ -212,14 +232,14 @@ public class EntryController {
             }
             service.save(entry);
         });
-        ra.addFlashAttribute("success", "\u2705 Registro actualizado");
+        ra.addFlashAttribute("success", "✅ Registro actualizado");
         return "redirect:/home";
     }
 
     @PostMapping("/eliminar/{id}")
     public String eliminar(@PathVariable Integer id, RedirectAttributes ra) {
         service.delete(id);
-        ra.addFlashAttribute("success", "\ud83d\uddd1\ufe0f Registro eliminado");
+        ra.addFlashAttribute("success", "🗑️ Registro eliminado");
         return "redirect:/home";
     }
 
@@ -326,35 +346,32 @@ public class EntryController {
         return ResponseEntity.ok(result);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────
 
     /**
-     * Parsea un string de números de serie de cómic:
-     *   "3"      → [3]
-     *   "3-5"    → [3,4,5]
-     *   "3,4,5"  → [3,4,5]
+     * Parsea un string de números:
+     *   "3"     → [3]
+     *   "3-5"   → [3,4,5]
+     *   "3,4,5" → [3,4,5]
      *   null/"" → []
      */
     private List<Integer> parseIssueRange(String raw) {
         if (raw == null || raw.isBlank()) return Collections.emptyList();
         raw = raw.trim();
-        // Rango con guión: "3-5"
         if (raw.matches("\\d+-\\d+")) {
             String[] parts = raw.split("-");
             int from = Integer.parseInt(parts[0]);
             int to   = Integer.parseInt(parts[1]);
-            if (from > to || to - from > 100) return List.of(from); // sanity
+            if (from > to || to - from > 100) return List.of(from);
             List<Integer> list = new ArrayList<>();
             for (int i = from; i <= to; i++) list.add(i);
             return list;
         }
-        // Lista con comas: "3,4,5"
         if (raw.contains(",")) {
             return Arrays.stream(raw.split(","))
                 .map(String::trim).filter(s -> s.matches("\\d+"))
                 .map(Integer::parseInt).collect(Collectors.toList());
         }
-        // Número simple
         if (raw.matches("\\d+")) return List.of(Integer.parseInt(raw));
         return Collections.emptyList();
     }
@@ -370,21 +387,25 @@ public class EntryController {
         e.setSeenInCinema(Boolean.TRUE.equals(seenInCinema));
         e.setIsSingleVolume(Boolean.TRUE.equals(isSingleVolume));
         e.setComicVolume(Boolean.TRUE.equals(isSingleVolume) ? null : comicVolume);
-        e.setComicIssue(comicIssue); // siempre se guarda
+        e.setComicIssue(comicIssue);
         e.setFinished(Boolean.TRUE.equals(isSingleVolume) ? null : finished);
         e.setSeasonFinished(seasonFinished);
         e.setSeriesFinished(Boolean.TRUE.equals(isSingleVolume) ? null : seriesFinished);
         return e;
     }
 
-    private void saveCoverToEntry(Entry entry, MultipartFile cover, String autoCoverUrl, RedirectAttributes ra) {
+    private String resolveCoverPath(MultipartFile cover, String autoCoverUrl) {
         if (cover != null && !cover.isEmpty()) {
-            try { entry.setCoverPath(service.saveCover(cover)); }
-            catch (IOException e) { if (ra != null) ra.addFlashAttribute("error", "No se pudo guardar la portada"); }
+            try { return service.saveCover(cover); } catch (IOException e) { /* sin portada */ }
         } else if (autoCoverUrl != null && !autoCoverUrl.isBlank()) {
-            try { entry.setCoverPath(downloadRemoteCover(autoCoverUrl, service.getCoversDir())); }
-            catch (IOException e) { /* sin portada */ }
+            try { return downloadRemoteCover(autoCoverUrl, service.getCoversDir()); } catch (IOException e) { /* sin portada */ }
         }
+        return null;
+    }
+
+    private void saveCoverToEntry(Entry entry, MultipartFile cover, String autoCoverUrl, RedirectAttributes ra) {
+        String path = resolveCoverPath(cover, autoCoverUrl);
+        if (path != null) entry.setCoverPath(path);
     }
 
     private String downloadRemoteCover(String imageUrl, String coversDir) throws IOException {
