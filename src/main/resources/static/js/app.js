@@ -197,7 +197,12 @@ function _doFetchCover() {
   const params = new URLSearchParams({ type, title, extra });
   fetch('/api/cover/search?' + params)
     .then(r => r.json())
-    .then(data => { if (data.url) _showCoverPreview(data.url); else _hideCoverPreview(); })
+    .then(data => {
+      // Doble check: si mientras esperaba la respuesta se activó una portada existente, ignorar
+      const ep = document.getElementById('existingCoverPath');
+      if (ep && ep.value.trim()) return;
+      if (data.url) _showCoverPreview(data.url); else _hideCoverPreview();
+    })
     .catch(() => {});
 }
 
@@ -239,8 +244,9 @@ function _hideCoverPreview() {
 
 // ── PORTADA EXISTENTE (reutilizar de registro previo) ────────────────
 function _showExistingCoverHint(coverPath) {
+  clearTimeout(coverDebounce);  // cancelar cualquier búsqueda de TMDB pendiente
   _hideCoverPreview();
-  _hideDropZone();  // ocultar zona de drag & drop
+  _hideDropZone();
   const existing = document.getElementById('existingCoverPath');
   if (existing) existing.value = coverPath;
 
@@ -275,8 +281,8 @@ function _hideExistingCoverHint() {
 
 function _clearExistingCover() {
   _hideExistingCoverHint();
-  _showDropZone();      // volver a mostrar la zona de arrastre
-  fetchAutoCover();     // relanzar búsqueda automática de TMDB
+  _showDropZone();
+  fetchAutoCover();
 }
 
 // ── HINT ─────────────────────────────────────────────────────────
@@ -295,9 +301,9 @@ function _doFetchHint() {
   const type  = typeEl.value;
   if (!type || (!type.includes('Serie') && !type.includes('Libro') && !type.includes('mic'))) return;
 
-  const seasonEl = document.querySelector('input[name="season"]');
+  const seasonEl  = document.querySelector('input[name="season"]');
   const seasonVal = seasonEl && seasonEl.value ? parseInt(seasonEl.value) : null;
-  const params = new URLSearchParams({ title, type });
+  const params    = new URLSearchParams({ title, type });
   if (seasonVal) params.set('season', seasonVal);
 
   fetch('/api/entry/hint?' + params)
@@ -307,10 +313,13 @@ function _doFetchHint() {
       if (dl && data.titles) dl.innerHTML = data.titles.map(t => `<option value="${t}"></option>`).join('');
 
       if (data.coverLocalPath) {
+        // Hay portada existente: mostrarla y NO buscar por API
         _showExistingCoverHint(data.coverLocalPath);
       } else {
+        // No hay portada existente: ocultar hint y dejar que TMDB busque
         _hideExistingCoverHint();
         _showDropZone();
+        fetchAutoCover();
       }
 
       if (type.includes('Serie')) {
@@ -408,8 +417,16 @@ function updateDynamicFields(prefill) {
   if (type) { box.style.display = ''; box.innerHTML = html; }
   else       { box.style.display = 'none'; box.innerHTML = ''; }
   syncStarsVisibility();
-  fetchAutoCover();
-  fetchEntryHint();
+
+  // Para tipos con hint (Serie/Libro/Cómic): el hint decide si lanzar fetchAutoCover
+  // Para tipos sin hint (Película/Teatro): lanzar fetchAutoCover directamente
+  const usesHint = type.includes('Serie') || type.includes('Libro') || type.includes('mic');
+  if (usesHint) {
+    fetchEntryHint(); // el hint llamará a fetchAutoCover solo si no hay portada existente
+  } else {
+    fetchAutoCover();
+    fetchEntryHint();
+  }
 }
 
 function previewEpisodes() {
@@ -478,9 +495,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const dateIn = document.getElementById('dateInput');
   if (dateIn && !dateIn.value) dateIn.value = new Date().toISOString().split('T')[0];
   const titleEl = document.querySelector('input[name="title"]');
-  if (titleEl) titleEl.addEventListener('input', () => { fetchAutoCover(); fetchEntryHint(); });
+  if (titleEl) titleEl.addEventListener('input', () => {
+    const type = document.getElementById('typeSelect')?.value || '';
+    const usesHint = type.includes('Serie') || type.includes('Libro') || type.includes('mic');
+    if (usesHint) {
+      fetchEntryHint(); // el hint decidirá si lanzar fetchAutoCover
+    } else {
+      fetchAutoCover();
+      fetchEntryHint();
+    }
+  });
   const typeEl = document.getElementById('typeSelect');
-  if (typeEl) typeEl.addEventListener('change', () => { _hideCoverPreview(); _hideExistingCoverHint(); _showDropZone(); setTimeout(() => { fetchAutoCover(); fetchEntryHint(); }, 300); });
+  if (typeEl) typeEl.addEventListener('change', () => {
+    _hideCoverPreview(); _hideExistingCoverHint(); _showDropZone();
+    setTimeout(() => updateDynamicFields(), 50);
+  });
   const typeElP = document.getElementById('typeSelectPending');
   if (typeElP) typeElP.addEventListener('change', () => { _hideCoverPreview(); setTimeout(fetchAutoCover, 300); });
   initCoverDropZone();
