@@ -13,7 +13,7 @@ public class TmdbService {
     private static final String IMAGE_BASE  = "https://image.tmdb.org/t/p/w500";
     private static final String BOOKS_URL   = "https://www.googleapis.com/books/v1";
 
-    @Value("${TMDB_BEARER_TOKEN:}")
+    @Value("${tmdb.bearer-token:}")
     private String bearerToken;
 
     private final WebClient webClient;
