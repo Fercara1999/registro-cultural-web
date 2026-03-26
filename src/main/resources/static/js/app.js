@@ -29,8 +29,8 @@ function initStars(initial) {
     s.className = 'star-widget' + (i <= current ? ' on' : '');
     s.textContent = i <= current ? '★' : '☆';
     s.dataset.v = i;
-    s.addEventListener('mouseenter', () => highlight(i));
-    s.addEventListener('mouseleave', () => highlight(current));
+    s.addEventListener('mouseenter', () => { highlight(i); if (label) label.textContent = i; });
+    s.addEventListener('mouseleave', () => { highlight(current); if (label) label.textContent = current; });
     s.addEventListener('click',      () => { current = i; input.value = i; label.textContent = i; highlight(i); });
     row.appendChild(s);
   }
@@ -115,40 +115,34 @@ function initCoverDropZone() {
 }
 
 function _setDropFile(file) {
-  // Asignar el fichero al input real para que lo envíe el form
   const dt = new DataTransfer();
   dt.items.add(file);
   const fileInput = document.getElementById('coverFileInput');
   if (fileInput) fileInput.files = dt.files;
-  // Limpiar autoCoverUrl para que no interfiera
   const hidden = document.getElementById('autoCoverUrl');
   if (hidden) hidden.value = '';
-  // Preview
   const reader = new FileReader();
   reader.onload = ev => _showDropPreview(ev.target.result);
   reader.readAsDataURL(file);
 }
 
 function _setDropUrl(url) {
-  // Guardar la URL en autoCoverUrl; el backend la descarga
   const hidden = document.getElementById('autoCoverUrl');
   if (hidden) hidden.value = url;
-  // Limpiar el file input
   const fileInput = document.getElementById('coverFileInput');
   if (fileInput) fileInput.value = '';
-  // Preview directo con la URL
   _showDropPreview(url);
 }
 
 function _showDropPreview(src) {
-  const zone    = document.getElementById('coverDropZone');
-  const label   = document.getElementById('coverDropLabel');
-  const preview = document.getElementById('coverDropPreview');
+  const zone     = document.getElementById('coverDropZone');
+  const label    = document.getElementById('coverDropLabel');
+  const preview  = document.getElementById('coverDropPreview');
   const clearBtn = document.getElementById('coverDropClear');
   if (!zone || !preview) return;
   preview.src = src;
   preview.style.display = 'block';
-  if (label)   label.style.display   = 'none';
+  if (label)    label.style.display    = 'none';
   if (clearBtn) clearBtn.style.display = 'block';
 }
 
@@ -162,9 +156,8 @@ function clearCoverDrop(event) {
   if (fileInput) fileInput.value = '';
   if (hidden)    hidden.value    = '';
   if (preview)   { preview.src = ''; preview.style.display = 'none'; }
-  if (label)     label.style.display   = 'block';
+  if (label)     label.style.display    = 'block';
   if (clearBtn)  clearBtn.style.display = 'none';
-  // Volver a mostrar la portada automática si había una
   const autoCoverImg = document.getElementById('autoCoverImg');
   if (autoCoverImg && autoCoverImg.src) {
     hidden.value = autoCoverImg.src;
@@ -212,7 +205,6 @@ function _doFetchCover() {
 
 function _showCoverPreview(url) {
   const hiddenInput = document.getElementById('autoCoverUrl');
-  // Solo actualizar si el usuario no ha puesto una portada manual en la drop zone
   const fileInput = document.getElementById('coverFileInput');
   const hasManual = (fileInput && fileInput.files && fileInput.files.length > 0)
                   || document.getElementById('coverDropPreview')?.style.display === 'block';
@@ -320,7 +312,7 @@ function updateDynamicFields(prefill) {
       <div class="form-row">
         <div class="form-group flex-grow"><label>\ud83c\udfac Director</label><input type="text" name="director" ${fs} value="${d.director||''}" oninput="fetchAutoCover()"/></div>
       </div>
-      <div class="check-row"><label><input type="checkbox" name="seenInCinema" value="true" ${d.seenInCinema=='true'?'checked':''}/> \ud83c\udfab Vista en el cine</label></div>`;
+      <div class="check-row"><label><input type="checkbox" name="seenInCinema" value="true" ${d.seenInCinema=='true'?'checked':''}"/> \ud83c\udfab Vista en el cine</label></div>`;
   } else if (type.includes('Teatro')) {
     html = `
       <div class="form-row">
@@ -365,9 +357,9 @@ function updateDynamicFieldsPending() {
   const type = sel.value || '';
   const fs = 'style="width:100%;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--input);color:var(--text);font-size:.92rem"';
   let html = '';
-  if (type.includes('Libro'))  html = `<div class="form-row"><div class="form-group flex-grow"><label>\u270d\ufe0f Autor</label><input type="text" name="author" ${fs} oninput="fetchAutoCover()"/></div></div>`;
-  else if (type.includes('Serie')) html = `<div class="form-row"><div class="form-group flex-grow"><label>\ud83d\udcfa T\u00edtulo exacto</label><input type="text" name="seriesHint" ${fs} oninput="fetchAutoCover()"/></div></div>`;
-  else if (type.includes('Pel'))   html = `<div class="form-row"><div class="form-group flex-grow"><label>\ud83c\udfac Director</label><input type="text" name="director" ${fs} oninput="fetchAutoCover()"/></div></div>`;
+  if (type.includes('Libro'))       html = `<div class="form-row"><div class="form-group flex-grow"><label>\u270d\ufe0f Autor</label><input type="text" name="author" ${fs} oninput="fetchAutoCover()"/></div></div>`;
+  else if (type.includes('Serie'))  html = `<div class="form-row"><div class="form-group flex-grow"><label>\ud83d\udcfa T\u00edtulo exacto</label><input type="text" name="seriesHint" ${fs} oninput="fetchAutoCover()"/></div></div>`;
+  else if (type.includes('Pel'))    html = `<div class="form-row"><div class="form-group flex-grow"><label>\ud83c\udfac Director</label><input type="text" name="director" ${fs} oninput="fetchAutoCover()"/></div></div>`;
   else if (type.includes('Teatro')) html = `<div class="form-row"><div class="form-group flex-grow"><label>\ud83c\udfa4 Lugar</label><input type="text" name="venue" ${fs}/></div></div>`;
   box.innerHTML = html;
 }
