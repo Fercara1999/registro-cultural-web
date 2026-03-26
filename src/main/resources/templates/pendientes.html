@@ -11,7 +11,7 @@
   <div class="nav-brand">📚 Mi Registro Cultural</div>
   <div class="nav-links">
     <a th:href="@{/home}">🏠 Inicio</a>
-    <a th:href="@{/}">📝 Registrar</a>
+    <a th:href="@{/registrar}">📝 Registrar</a>
     <a th:href="@{/pendientes}" class="active">⏳ Pendientes</a>
     <a th:href="@{/buscar}">🔍 Buscar</a>
     <a th:href="@{/estadisticas}">📊 Estadísticas</a>
@@ -21,11 +21,9 @@
 <main class="main-content">
   <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
 
-  <!-- FORMULARIO PENDIENTE -->
   <section class="card form-card">
     <h2>⏳ Añadir pendiente</h2>
     <form action="/pendientes/guardar" method="post" enctype="multipart/form-data" id="pendingForm">
-
       <div class="form-row">
         <div class="form-group flex-grow">
           <label>Título</label>
@@ -42,15 +40,11 @@
           </select>
         </div>
       </div>
-
-      <!-- Campos dinámicos según tipo (sin temporada/capítulo en series, sin tomo/número en cómics) -->
       <div id="dynamicFieldsPending" class="dynamic-card"></div>
-
       <div class="form-group">
         <label>Notas</label>
         <textarea name="description" rows="2" placeholder="¿Por qué quieres verlo/leerlo?"></textarea>
       </div>
-
       <div class="form-row align-end">
         <div class="form-group">
           <label>Portada</label>
@@ -63,7 +57,6 @@
     </form>
   </section>
 
-  <!-- LISTA DE PENDIENTES -->
   <section class="entries-section">
     <h2>📋 Pendientes <span class="badge" th:text="${pendingEntries.size()}">0</span></h2>
     <div class="entries-grid">
@@ -88,7 +81,6 @@
             <p th:if="${entry.description}" class="card-desc" th:text="${entry.description}"></p>
           </div>
           <div class="card-actions">
-            <!-- Marcar como visto: mueve el pendiente a registros -->
             <form th:action="@{/pendientes/marcar-visto/{id}(id=${entry.id})}" method="post">
               <button type="submit" class="btn-icon" title="Marcar como visto">✅</button>
             </form>

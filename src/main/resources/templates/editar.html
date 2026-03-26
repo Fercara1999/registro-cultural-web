@@ -10,7 +10,9 @@
 <nav class="navbar">
   <div class="nav-brand">📚 Mi Registro Cultural</div>
   <div class="nav-links">
-    <a th:href="@{/}">📝 Registrar</a>
+    <a th:href="@{/home}">🏠 Inicio</a>
+    <a th:href="@{/registrar}">📝 Registrar</a>
+    <a th:href="@{/pendientes}">⏳ Pendientes</a>
     <a th:href="@{/buscar}">🔍 Buscar</a>
     <a th:href="@{/estadisticas}">📊 Estadísticas</a>
   </div>
@@ -54,13 +56,13 @@
           <input type="file" name="cover" accept="image/*" class="file-input"/>
           <img th:if="${entry.coverPath}" th:src="@{/covers/{f}(f=${entry.coverPath})}" class="cover-preview-small"/>
         </div>
-        <div class="form-group">
+        <div id="ratingBlock" class="form-group">
           <label>⭐ Valoración: <span id="ratingVal" th:text="${entry.rating != null ? entry.rating : 0}">0</span>/10</label>
           <div class="star-row" id="starRow"></div>
           <input type="hidden" name="rating" id="ratingInput" th:value="${entry.rating != null ? entry.rating : 0}"/>
         </div>
         <div class="form-group align-self-end">
-          <a th:href="@{/}" class="btn btn-secondary">Cancelar</a>
+          <a th:href="@{/home}" class="btn btn-secondary">Cancelar</a>
           <button type="submit" class="btn btn-primary">💾 Guardar cambios</button>
         </div>
       </div>
