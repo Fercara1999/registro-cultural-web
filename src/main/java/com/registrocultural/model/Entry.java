@@ -39,7 +39,11 @@ public class Entry {
     private Boolean seasonFinished;
     private Boolean seriesFinished;
 
-    // ── Getters & Setters ──────────────────────────────────────────
+    /** true = pendiente (quiero ver/leer), false/null = ya visto/leido */
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private boolean pending = false;
+
+    // ── Getters & Setters ────────────────────────────────────────
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
     public String getTitle() { return title; }
@@ -80,4 +84,6 @@ public class Entry {
     public void setSeasonFinished(Boolean v) { this.seasonFinished = v; }
     public Boolean getSeriesFinished() { return seriesFinished; }
     public void setSeriesFinished(Boolean v) { this.seriesFinished = v; }
+    public boolean isPending() { return pending; }
+    public void setPending(boolean pending) { this.pending = pending; }
 }

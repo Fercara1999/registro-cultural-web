@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pendientes | Mi Registro Cultural</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}"/>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand">📚 Mi Registro Cultural</div>
+  <div class="nav-links">
+    <a th:href="@{/home}">🏠 Inicio</a>
+    <a th:href="@{/}">📝 Registrar</a>
+    <a th:href="@{/pendientes}" class="active">⏳ Pendientes</a>
+    <a th:href="@{/buscar}">🔍 Buscar</a>
+    <a th:href="@{/estadisticas}">📊 Estadísticas</a>
+  </div>
+  <button class="theme-btn" onclick="toggleTheme()">🌙</button>
+</nav>
+<main class="main-content">
+  <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+
+  <!-- FORMULARIO PENDIENTE -->
+  <section class="card form-card">
+    <h2>⏳ Añadir pendiente</h2>
+    <form action="/pendientes/guardar" method="post" enctype="multipart/form-data" id="pendingForm">
+
+      <div class="form-row">
+        <div class="form-group flex-grow">
+          <label>Título</label>
+          <input type="text" name="title" required placeholder="Ej: Dune" autocomplete="off"/>
+        </div>
+        <div class="form-group">
+          <label>Tipo</label>
+          <select name="type" id="typeSelectPending" onchange="updateDynamicFieldsPending()" required>
+            <option value="📚 Libro">📚 Libro</option>
+            <option value="🎬 Serie">🎬 Serie</option>
+            <option value="🎥 Película">🎥 Película</option>
+            <option value="🎭 Teatro">🎭 Teatro</option>
+            <option value="💭 Cómic">💭 Cómic</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Campos dinámicos según tipo (sin temporada/capítulo en series, sin tomo/número en cómics) -->
+      <div id="dynamicFieldsPending" class="dynamic-card"></div>
+
+      <div class="form-group">
+        <label>Notas</label>
+        <textarea name="description" rows="2" placeholder="¿Por qué quieres verlo/leerlo?"></textarea>
+      </div>
+
+      <div class="form-row align-end">
+        <div class="form-group">
+          <label>Portada</label>
+          <input type="file" name="cover" accept="image/*" class="file-input"/>
+        </div>
+        <div class="form-group align-self-end">
+          <button type="submit" class="btn btn-primary">⏳ Guardar pendiente</button>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <!-- LISTA DE PENDIENTES -->
+  <section class="entries-section">
+    <h2>📋 Pendientes <span class="badge" th:text="${pendingEntries.size()}">0</span></h2>
+    <div class="entries-grid">
+      <div th:each="entry : ${pendingEntries}" class="entry-card">
+        <div class="entry-card-inner">
+          <div class="card-cover">
+            <img th:if="${entry.coverPath}" th:src="@{/covers/{f}(f=${entry.coverPath})}" class="cover-img" alt="portada"/>
+            <span th:unless="${entry.coverPath}" class="cover-placeholder">📷</span>
+          </div>
+          <div class="card-info">
+            <span class="card-type" th:text="${entry.type}"></span>
+            <span class="card-title" th:text="${entry.title}"></span>
+            <th:block th:if="${entry.type != null and entry.type.contains('Libro')}">
+              <span th:if="${entry.author}" class="chip" th:text="'✍️ ' + ${entry.author}"></span>
+            </th:block>
+            <th:block th:if="${entry.type != null and entry.type.contains('Pel')}">
+              <span th:if="${entry.director}" class="chip" th:text="'🎬 ' + ${entry.director}"></span>
+            </th:block>
+            <th:block th:if="${entry.type != null and entry.type.contains('Teatro')}">
+              <span th:if="${entry.venue}" class="chip" th:text="'🎭 ' + ${entry.venue}"></span>
+            </th:block>
+            <p th:if="${entry.description}" class="card-desc" th:text="${entry.description}"></p>
+          </div>
+          <div class="card-actions">
+            <!-- Marcar como visto: mueve el pendiente a registros -->
+            <form th:action="@{/pendientes/marcar-visto/{id}(id=${entry.id})}" method="post">
+              <button type="submit" class="btn-icon" title="Marcar como visto">✅</button>
+            </form>
+            <a th:href="@{/editar/{id}(id=${entry.id})}" class="btn-icon" title="Editar">✏️</a>
+            <form th:action="@{/eliminar/{id}(id=${entry.id})}" method="post"
+                  onsubmit="return confirm('¿Eliminar este pendiente?')">
+              <button type="submit" class="btn-icon" title="Eliminar">🗑️</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div th:if="${#lists.isEmpty(pendingEntries)}" style="color:var(--muted);font-size:.9rem;padding:1rem 0">
+        No tienes pendientes aún 🎉
+      </div>
+    </div>
+  </section>
+</main>
+<script th:src="@{/js/app.js}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => updateDynamicFieldsPending());
+</script>
+</body>
+</html>
