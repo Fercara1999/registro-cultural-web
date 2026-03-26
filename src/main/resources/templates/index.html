@@ -8,7 +8,7 @@
 </head>
 <body>
 <nav class="navbar">
-  <div class="nav-brand">📚 Mi Registro Cultural</div>
+  <a th:href="@{/}" class="nav-brand">📚 Mi Registro Cultural</a>
   <div class="nav-links">
     <a th:href="@{/home}">🏠 Inicio</a>
     <a th:href="@{/registrar}" class="active">📝 Registrar</a>
@@ -23,7 +23,6 @@
   <section class="card form-card">
     <h2>📝 Registrar nueva entrada</h2>
     <form action="/registrar" method="post" enctype="multipart/form-data" id="registerForm">
-      <!-- Campo fijo: la URL de portada automática. Vive aquí para no destruirse al regenerar campos dinámicos -->
       <input type="hidden" name="autoCoverUrl" id="autoCoverUrl" value=""/>
       <div class="form-row">
         <div class="form-group flex-grow">

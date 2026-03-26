@@ -41,7 +41,13 @@ a { color: var(--accent); text-decoration: none; }
   position: sticky; top: 0; z-index: 100;
   flex-wrap: wrap;
 }
-.nav-brand { font-size: 1.2rem; font-weight: 700; color: var(--accent); flex: 1; min-width: 160px; }
+.nav-brand {
+  font-size: 1.2rem; font-weight: 700; color: var(--accent);
+  flex: 1; min-width: 160px;
+  text-decoration: none;   /* es un <a> ahora */
+  cursor: pointer;
+}
+.nav-brand:hover { opacity: 0.85; }
 .nav-links { display: flex; gap: 6px; flex-wrap: wrap; }
 .nav-links a {
   padding: 6px 14px; border-radius: 20px; font-size: 0.9rem;
@@ -154,30 +160,17 @@ textarea { resize: vertical; }
 
 /* ── ESTADÍSTICAS ───────────────────────────────────────────────── */
 .stats-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px; flex-wrap: wrap; gap: 10px;
 }
 .stats-header h2 { font-size: 1.2rem; color: var(--accent); }
-
-/* Los dos selects del formulario de estadísticas van en fila */
 .period-form {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  display: flex; flex-direction: row; align-items: center; gap: 10px; flex-wrap: wrap;
 }
 .period-form select {
-  padding: 7px 12px;
-  border-radius: 8px;
-  border: 1.5px solid var(--border);
-  background: var(--input);
-  color: var(--text);
-  width: auto;       /* anula el width:100% del selector global */
+  padding: 7px 12px; border-radius: 8px;
+  border: 1.5px solid var(--border); background: var(--input);
+  color: var(--text); width: auto;
 }
 
 .kpi-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; }

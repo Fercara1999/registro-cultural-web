@@ -9,7 +9,7 @@
 </head>
 <body>
 <nav class="navbar">
-  <div class="nav-brand">📚 Mi Registro Cultural</div>
+  <a th:href="@{/}" class="nav-brand">📚 Mi Registro Cultural</a>
   <div class="nav-links">
     <a th:href="@{/home}">🏠 Inicio</a>
     <a th:href="@{/registrar}">📝 Registrar</a>
@@ -20,12 +20,9 @@
   <button class="theme-btn" onclick="toggleTheme()">🌙</button>
 </nav>
 <main class="main-content">
-
-  <!-- Cabecera con filtros tipo + periodo -->
   <div class="stats-header">
     <h2>📊 Estadísticas</h2>
     <form action="/estadisticas" method="get" class="period-form" id="statsForm">
-      <!-- Selector de tipo (izquierda) -->
       <select name="tipo" onchange="document.getElementById('statsForm').submit()">
         <option value="Todos"    th:selected="${selectedTipo=='Todos'}">Todos</option>
         <option value="Libro"    th:selected="${selectedTipo=='Libro'}">📚 Libro</option>
@@ -34,7 +31,6 @@
         <option value="Teatro"   th:selected="${selectedTipo=='Teatro'}">🎭 Teatro</option>
         <option value="Cómic"    th:selected="${selectedTipo=='Cómic'}">💭 Cómic</option>
       </select>
-      <!-- Selector de periodo (derecha) -->
       <select name="period" onchange="document.getElementById('statsForm').submit()">
         <option value="semana" th:selected="${period=='semana'}">Esta semana</option>
         <option value="mes"    th:selected="${period=='mes'}">Este mes</option>
@@ -43,8 +39,6 @@
       </select>
     </form>
   </div>
-
-  <!-- KPIs generales -->
   <div class="kpi-row">
     <div class="kpi kpi-accent">  <span class="kpi-icon">📚</span><span class="kpi-val" th:text="${total}">0</span>  <span class="kpi-lbl">en periodo</span></div>
     <div class="kpi kpi-accent2"> <span class="kpi-icon">📋</span><span class="kpi-val" th:text="${totalAll}">0</span><span class="kpi-lbl">total histórico</span></div>
@@ -53,8 +47,6 @@
     <div class="kpi kpi-purple"  th:if="${selectedTipo=='Todos'}"> <span class="kpi-icon">💭</span><span class="kpi-val" th:text="${comics}">0</span>  <span class="kpi-lbl">cómics</span></div>
     <div class="kpi kpi-cinema"> <span class="kpi-icon">🎫</span><span class="kpi-val" th:text="${cine}">0</span>   <span class="kpi-lbl">en cine (periodo)</span></div>
   </div>
-
-  <!-- KPIs específicos por tipo -->
   <div class="kpi-row" th:if="${selectedTipo=='Libro'}">
     <div class="kpi kpi-success"><span class="kpi-icon">✅</span><span class="kpi-val" th:text="${librosTerminados}">0</span><span class="kpi-lbl">terminados</span></div>
     <div class="kpi kpi-warn">   <span class="kpi-icon">📖</span><span class="kpi-val" th:text="${librosEnCurso}">0</span>  <span class="kpi-lbl">en curso</span></div>
@@ -80,50 +72,28 @@
     <div class="kpi kpi-warn">   <span class="kpi-icon">💭</span><span class="kpi-val" th:text="${comicsEnCurso}">0</span>  <span class="kpi-lbl">en curso</span></div>
     <div class="kpi kpi-accent"> <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>   <span class="kpi-lbl">nota media</span></div>
   </div>
-
-  <!-- Top autores (solo libros) -->
   <div class="chart-card full-width" th:if="${selectedTipo=='Libro' and topAutores != null and !topAutores.isEmpty()}">
     <h3>✍️ Top autores</h3>
     <div style="display:flex;flex-wrap:wrap;gap:.5rem;">
       <span th:each="a : ${topAutores}" class="chip" th:text="${a}"></span>
     </div>
   </div>
-
-  <!-- Top lugares (solo teatro) -->
   <div class="chart-card full-width" th:if="${selectedTipo=='Teatro' and topLugares != null and !topLugares.isEmpty()}">
     <h3>🎭 Top lugares</h3>
     <div style="display:flex;flex-wrap:wrap;gap:.5rem;">
       <span th:each="l : ${topLugares}" class="chip" th:text="${l}"></span>
     </div>
   </div>
-
-  <!-- Gráficos -->
   <div class="charts-row">
-    <div class="chart-card flex-grow">
-      <h3>Registros por tipo</h3>
-      <canvas id="barChart"></canvas>
-    </div>
-    <div class="chart-card">
-      <h3>Distribución</h3>
-      <canvas id="pieChart" width="260"></canvas>
-    </div>
+    <div class="chart-card flex-grow"><h3>Registros por tipo</h3><canvas id="barChart"></canvas></div>
+    <div class="chart-card"><h3>Distribución</h3><canvas id="pieChart" width="260"></canvas></div>
   </div>
-
-  <div class="chart-card full-width">
-    <h3>Actividad mensual</h3>
-    <canvas id="lineChart"></canvas>
-  </div>
-
-  <div class="chart-card full-width">
-    <h3>Por día de la semana</h3>
-    <canvas id="dayChart"></canvas>
-  </div>
-
-  <!-- Sección Cine -->
+  <div class="chart-card full-width"><h3>Actividad mensual</h3><canvas id="lineChart"></canvas></div>
+  <div class="chart-card full-width"><h3>Por día de la semana</h3><canvas id="dayChart"></canvas></div>
   <div th:if="${cinemaList != null and !cinemaList.isEmpty()}">
     <div class="section-title">🎫 Películas vistas en el cine</div>
     <div class="chart-card full-width">
-      <h3>🏟️ Lista de películas en el cine (<span th:text="${cineTotal}">0</span> en total)</h3>
+      <h3>🏙️ Lista de películas en el cine (<span th:text="${cineTotal}">0</span> en total)</h3>
       <div class="cinema-list">
         <div th:each="e, i : ${cinemaList}" class="cinema-row" th:classappend="${i.odd ? 'odd' : ''}">
           <span class="cinema-num" th:text="${i.index + 1} + '.'">1.</span>
@@ -135,8 +105,7 @@
       </div>
     </div>
   </div>
-  <p th:if="${cinemaList == null or cinemaList.isEmpty()}" class="empty-msg">📭 No hay películas registradas en el cine</p>
-
+  <p th:if="${cinemaList == null or cinemaList.isEmpty()}" class="empty-msg">💭 No hay películas registradas en el cine</p>
   <script th:inline="javascript">
     const porTipo  = /*[[${porTipo}]]*/ {};
     const porMes   = /*[[${porMes}]]*/ {};
