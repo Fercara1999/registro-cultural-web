@@ -9,6 +9,8 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import jakarta.annotation.PostConstruct;
+
 @Service
 public class TmdbService {
 
@@ -18,7 +20,8 @@ public class TmdbService {
     private static final String IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
     private static final String BOOKS_URL  = "https://www.googleapis.com/books/v1";
 
-    @Value("${tmdb.bearer-token:}")
+    // Leer directamente la variable de entorno, sin pasar por application.properties
+    @Value("#{systemEnvironment['TMDB_BEARER_TOKEN'] ?: ''}")
     private String bearerToken;
 
     private final WebClient webClient;
@@ -26,6 +29,15 @@ public class TmdbService {
 
     public TmdbService(WebClient.Builder builder) {
         this.webClient = builder.build();
+    }
+
+    @PostConstruct
+    public void init() {
+        if (bearerToken == null || bearerToken.isBlank()) {
+            log.warn("[TMDB] ADVERTENCIA: TMDB_BEARER_TOKEN no encontrado en variables de entorno");
+        } else {
+            log.info("[TMDB] Token cargado correctamente (primeros 10 chars: {}...)", bearerToken.substring(0, Math.min(10, bearerToken.length())));
+        }
     }
 
     /** Busca portada de película en TMDB. Devuelve URL completa o null. */
