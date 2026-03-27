@@ -431,12 +431,6 @@ public class EntryController {
         return e;
     }
 
-    /**
-     * Resuelve el coverPath final en este orden de prioridad:
-     * 1. Fichero subido manualmente
-     * 2. URL remota (TMDB/ComicVine)
-     * 3. Path de portada ya existente en la BD (reutilizar sin copiar)
-     */
     private String resolveCoverPath(MultipartFile cover, String autoCoverUrl, String existingCoverPath) {
         if (cover != null && !cover.isEmpty()) {
             try { return service.saveCover(cover); } catch (IOException e) { /* sin portada */ }
