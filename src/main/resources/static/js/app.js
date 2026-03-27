@@ -347,7 +347,14 @@ function _doFetchHint() {
         const chapEl = document.getElementById('chaptersInput');
         const authEl = document.querySelector('input[name="author"]');
         if (chapEl && data.chapters != null && !chapEl.value.trim()) chapEl.value = data.chapters;
-        if (authEl && data.author   != null && authEl.value === '') authEl.value = data.author;
+        // Si el campo autor existe, rellenarlo; si no, guardar en _pendingAuthor para cuando se renderice
+        if (data.author && data.author.trim()) {
+          if (authEl) {
+            if (!authEl.value.trim()) authEl.value = data.author;
+          } else {
+            _pendingAuthor = data.author;
+          }
+        }
       } else if (type.includes('mic')) {
         const volEl   = document.querySelector('input[name="comicVolume"]');
         const issueEl = document.getElementById('comicIssueInput');
