@@ -63,7 +63,7 @@ public class EntryController {
             @RequestParam(required = false) String description,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) Integer rating,
-            @RequestParam(required = false) String chaptersRaw,
+            @RequestParam(name = "chapters", required = false) String chaptersRaw,
             @RequestParam(required = false) String author,
             @RequestParam(required = false) Integer season,
             @RequestParam(required = false) String episode,
@@ -82,8 +82,8 @@ public class EntryController {
             RedirectAttributes ra) {
 
         LocalDate d = date != null ? date : LocalDate.now();
-        List<Integer> episodes = parseIssueRange(episode);
-        List<Integer> issues   = parseIssueRange(comicIssue);
+        List<Integer> episodes     = parseIssueRange(episode);
+        List<Integer> issues       = parseIssueRange(comicIssue);
         List<Integer> chaptersList = parseIssueRange(chaptersRaw);
 
         boolean multiEpisode = episodes.size() > 1;
@@ -91,8 +91,8 @@ public class EntryController {
         boolean multiChapter = chaptersList.size() > 1;
 
         if (!multiEpisode && !multiIssue && !multiChapter) {
-            Integer epInt      = episodes.isEmpty()     ? null : episodes.get(0);
-            Integer issueInt   = issues.isEmpty()       ? null : issues.get(0);
+            Integer epInt       = episodes.isEmpty()     ? null : episodes.get(0);
+            Integer issueInt    = issues.isEmpty()       ? null : issues.get(0);
             Integer chaptersInt = chaptersList.isEmpty() ? null : chaptersList.get(0);
             Entry entry = buildEntry(title, type, description, d, rating, chaptersInt, author,
                 season, epInt, venue, director, seenInCinema, isSingleVolume,
@@ -378,7 +378,7 @@ public class EntryController {
                 .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
                 .collect(Collectors.toList());
 
-            // Autor: se recupera del primer registro con autor informado, independientemente de si tiene capítulos
+            // Autor: primer registro del libro que tenga autor, independientemente de capítulos
             entries.stream()
                 .filter(e -> e.getAuthor() != null && !e.getAuthor().isBlank())
                 .findFirst()
