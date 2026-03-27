@@ -370,10 +370,17 @@ public class EntryController {
                 .filter(e -> e.getType() != null && e.getType().contains("mic"))
                 .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
                 .collect(Collectors.toList());
+
+            // Tomo: solo suma +1 si el último tomo está marcado como terminado
             entries.stream()
                 .filter(e -> e.getComicVolume() != null)
                 .max(Comparator.comparingInt(Entry::getComicVolume))
-                .ifPresent(last -> result.put("comicVolume", last.getComicVolume() + 1));
+                .ifPresent(last -> {
+                    boolean tomoTerminado = Boolean.TRUE.equals(last.getFinished());
+                    result.put("comicVolume", tomoTerminado ? last.getComicVolume() + 1 : last.getComicVolume());
+                });
+
+            // Número de serie: siempre sugiere el siguiente
             entries.stream()
                 .filter(e -> e.getComicIssue() != null)
                 .max(Comparator.comparingInt(Entry::getComicIssue))
