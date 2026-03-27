@@ -51,7 +51,8 @@ public class EntryController {
 
     @GetMapping("/registrar")
     public String registrarForm(Model model) {
-        model.addAttribute("entries", service.getAllNonPending());
+        List<Entry> last25 = service.getAllNonPending().stream().limit(25).collect(Collectors.toList());
+        model.addAttribute("entries", last25);
         model.addAttribute("newEntry", new Entry());
         return "index";
     }
@@ -337,7 +338,7 @@ public class EntryController {
         if (title.isBlank()) return ResponseEntity.ok(result);
         String titleLower = title.trim().toLowerCase();
 
-        // Portada existente
+        // Portada existente: búsqueda exacta por título
         service.getAll().stream()
             .filter(e -> !e.isPending())
             .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
@@ -372,20 +373,26 @@ public class EntryController {
             }
 
         } else if (type.contains("Libro")) {
+            // Para libros buscamos primero por coincidencia exacta, luego por contains
+            // para tolerar pequeñas diferencias de espaciado o encoding
             List<Entry> entries = service.getAll().stream()
                 .filter(e -> !e.isPending())
                 .filter(e -> e.getType() != null && e.getType().contains("Libro"))
-                .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
+                .filter(e -> e.getTitle() != null &&
+                    (e.getTitle().trim().toLowerCase().equals(titleLower) ||
+                     e.getTitle().trim().toLowerCase().contains(titleLower) ||
+                     titleLower.contains(e.getTitle().trim().toLowerCase())))
                 .collect(Collectors.toList());
 
-            // Autor: primer registro del libro que tenga autor, independientemente de capítulos
+            // Autor: primer registro con autor informado
             entries.stream()
                 .filter(e -> e.getAuthor() != null && !e.getAuthor().isBlank())
                 .findFirst()
                 .ifPresent(e -> result.put("author", e.getAuthor()));
 
-            // Capítulo sugerido: el siguiente al mayor registrado
+            // Capítulo sugerido: el siguiente al mayor registrado (solo con match exacto)
             entries.stream()
+                .filter(e -> e.getTitle().trim().toLowerCase().equals(titleLower))
                 .filter(e -> e.getChapters() != null)
                 .max(Comparator.comparingInt(Entry::getChapters))
                 .ifPresent(last -> result.put("chapters", last.getChapters() + 1));
@@ -397,7 +404,6 @@ public class EntryController {
                 .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
                 .collect(Collectors.toList());
 
-            // Tomo: solo suma +1 si el último tomo está marcado como terminado
             entries.stream()
                 .filter(e -> e.getComicVolume() != null)
                 .max(Comparator.comparingInt(Entry::getComicVolume))
@@ -406,7 +412,6 @@ public class EntryController {
                     result.put("comicVolume", tomoTerminado ? last.getComicVolume() + 1 : last.getComicVolume());
                 });
 
-            // Número de serie: siempre sugiere el siguiente
             entries.stream()
                 .filter(e -> e.getComicIssue() != null)
                 .max(Comparator.comparingInt(Entry::getComicIssue))
