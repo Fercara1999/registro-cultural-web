@@ -168,6 +168,9 @@ function _clearExistingCoverPath() {
 // ── PORTADA AUTOMÁTICA ─────────────────────────────────────────
 let coverDebounce = null;
 
+// Autor pendiente de aplicar cuando el campo exista en el DOM
+let _pendingAuthor = '';
+
 function fetchAutoCover() {
   clearTimeout(coverDebounce);
   coverDebounce = setTimeout(_doFetchCover, 700);
@@ -208,10 +211,16 @@ function _doFetchCover() {
         if (dirEl && !dirEl.value.trim()) dirEl.value = data.director;
       }
 
-      // Autorellenar autor (libros) — solo si el campo está vacío
+      // Autorellenar autor (libros)
       if (data.author && data.author.trim()) {
         const authEl = document.querySelector('input[name="author"]');
-        if (authEl && !authEl.value.trim()) authEl.value = data.author;
+        if (authEl) {
+          // El campo ya existe en el DOM: rellenar directamente
+          if (!authEl.value.trim()) authEl.value = data.author;
+        } else {
+          // El campo aún no existe (se creará en updateDynamicFields): guardarlo
+          _pendingAuthor = data.author;
+        }
       }
     })
     .catch(() => {});
@@ -427,6 +436,13 @@ function updateDynamicFields(prefill) {
   else       { box.style.display = 'none'; box.innerHTML = ''; }
   syncStarsVisibility();
 
+  // Si hay un autor pendiente de aplicar (llegó de la API antes de que existiera el campo), aplicarlo ahora
+  if (type.includes('Libro') && _pendingAuthor) {
+    const authEl = document.querySelector('input[name="author"]');
+    if (authEl && !authEl.value.trim()) authEl.value = _pendingAuthor;
+    _pendingAuthor = '';
+  }
+
   const usesHint = type.includes('Serie') || type.includes('Libro') || type.includes('mic');
   if (usesHint) {
     fetchEntryHint();
@@ -515,6 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const typeEl = document.getElementById('typeSelect');
   if (typeEl) typeEl.addEventListener('change', () => {
     _hideCoverPreview(); _hideExistingCoverHint(); _showDropZone();
+    _pendingAuthor = '';
     setTimeout(() => updateDynamicFields(), 50);
   });
   const typeElP = document.getElementById('typeSelectPending');
