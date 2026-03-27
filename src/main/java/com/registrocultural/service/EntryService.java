@@ -23,11 +23,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
-import java.time.temporal.WeekFields;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalDouble;
@@ -169,16 +167,13 @@ public class EntryService {
         }
     }
 
+    // ── STATS ──────────────────────────────────────────────────
+
     public Map<String, Object> getStats(String period, String tipo) {
         List<Entry> all = getAllNonPending();
         LocalDate now  = LocalDate.now();
         String p = period != null ? period : "mes";
-        LocalDate from = switch (p) {
-            case "semana" -> now.minusDays(now.getDayOfWeek().getValue() - 1);
-            case "anio"   -> now.withDayOfYear(1);
-            case "todo"   -> LocalDate.of(2000, 1, 1);
-            default       -> now.withDayOfMonth(1);
-        };
+        LocalDate from = periodFrom(p, now);
 
         List<Entry> byPeriod = all.stream()
             .filter(e -> !e.getDate().isBefore(from))
@@ -214,11 +209,10 @@ public class EntryService {
             .count();
         stats.put("capitulosLibros", capitulosLibros);
 
-        // ── Gráfico temporal adaptado al periodo ──
+        // Gráfico temporal adaptado al periodo
         Map<String, Long> porPeriodo;
         String periodLabel;
         if ("semana".equals(p)) {
-            // Día a día: Lun..Dom (etiqueta: dd/MM)
             periodLabel = "Evolución diaria";
             LocalDate monday = now.minusDays(now.getDayOfWeek().getValue() - 1);
             porPeriodo = new LinkedHashMap<>();
@@ -231,7 +225,6 @@ public class EntryService {
                 porPeriodo.put(lbl, cnt);
             }
         } else if ("mes".equals(p)) {
-            // Semana a semana dentro del mes: S1, S2, S3, S4(+)
             periodLabel = "Evolución semanal";
             porPeriodo = new LinkedHashMap<>();
             for (Entry e : filtered) {
@@ -239,7 +232,6 @@ public class EntryService {
                 String semLbl = "S" + ((dom - 1) / 7 + 1);
                 porPeriodo.merge(semLbl, 1L, Long::sum);
             }
-            // Garantizar S1..S4 aunque estén a 0
             Map<String, Long> ordered = new LinkedHashMap<>();
             for (String s : new String[]{"S1","S2","S3","S4","S5"}) {
                 long v = porPeriodo.getOrDefault(s, 0L);
@@ -247,14 +239,12 @@ public class EntryService {
             }
             porPeriodo = ordered;
         } else if ("anio".equals(p)) {
-            // Mes a mes
             periodLabel = "Actividad mensual";
             porPeriodo = new TreeMap<>(filtered.stream().collect(
                 Collectors.groupingBy(
                     e -> e.getDate().getYear() + "-" + String.format("%02d", e.getDate().getMonthValue()),
                     Collectors.counting())));
         } else {
-            // Todo el tiempo: año a año
             periodLabel = "Evolución anual";
             porPeriodo = new TreeMap<>(filtered.stream().collect(
                 Collectors.groupingBy(
@@ -264,7 +254,6 @@ public class EntryService {
         stats.put("porPeriodo",  porPeriodo);
         stats.put("periodLabel", periodLabel);
 
-        // porMes mantenido para compatibilidad (ya no se usa en el gráfico)
         Map<String, Long> porMes = new TreeMap<>(filtered.stream().collect(
             Collectors.groupingBy(
                 e -> e.getDate().getYear() + "-" + String.format("%02d", e.getDate().getMonthValue()),
@@ -295,6 +284,95 @@ public class EntryService {
         }
 
         return stats;
+    }
+
+    /**
+     * Devuelve los registros que corresponden a una KPI card concreta.
+     * kpi: "total" | "capitulosSeries" | "capitulosLibros" | "peliculas" | "comics" | "cine" | "teatro"
+     *      | "librosTerminados" | "librosEnCurso" | "seriesTerminadas" | "seriesEnCurso"
+     *      | "pelisEnCine" | "pelisEnCasa" | "comicsTerminados" | "comicsEnCurso"
+     */
+    public List<Entry> getDetalleRegistros(String period, String tipo, String kpi) {
+        List<Entry> all = getAllNonPending();
+        LocalDate now  = LocalDate.now();
+        String p = period != null ? period : "mes";
+        LocalDate from = periodFrom(p, now);
+
+        List<Entry> byPeriod = all.stream()
+            .filter(e -> !e.getDate().isBefore(from))
+            .collect(Collectors.toList());
+
+        boolean filterTipo = tipo != null && !"Todos".equals(tipo);
+
+        // Base: registros del periodo (filtrados por tipo si procede)
+        List<Entry> base;
+        if ("cine".equals(kpi)) {
+            // cine: solo películas en cine del periodo, sin importar tipo selector
+            base = byPeriod.stream()
+                .filter(e -> Boolean.TRUE.equals(e.getSeenInCinema()))
+                .collect(Collectors.toList());
+        } else if (filterTipo) {
+            base = byPeriod.stream()
+                .filter(e -> e.getType() != null && e.getType().contains(tipoKeyword(tipo)))
+                .collect(Collectors.toList());
+        } else {
+            base = byPeriod;
+        }
+
+        // Filtro adicional según la KPI
+        return switch (kpi) {
+            case "total"            -> base;
+            case "capitulosSeries"  -> base.stream()
+                .filter(e -> e.getType() != null && e.getType().contains("Serie") && e.getEpisode() != null)
+                .collect(Collectors.toList());
+            case "capitulosLibros"  -> base.stream()
+                .filter(e -> e.getType() != null && e.getType().contains("Libro") && e.getChapters() != null)
+                .collect(Collectors.toList());
+            case "peliculas"        -> base.stream()
+                .filter(e -> e.getType() != null && e.getType().contains("Pel"))
+                .collect(Collectors.toList());
+            case "comics"           -> base.stream()
+                .filter(e -> e.getType() != null && e.getType().contains("mic"))
+                .collect(Collectors.toList());
+            case "teatro"           -> base.stream()
+                .filter(e -> e.getType() != null && e.getType().contains("Teatro"))
+                .collect(Collectors.toList());
+            case "cine"             -> base; // ya filtrado arriba
+            case "librosTerminados" -> base.stream()
+                .filter(e -> Boolean.TRUE.equals(e.getFinished()))
+                .collect(Collectors.toList());
+            case "librosEnCurso"    -> base.stream()
+                .filter(e -> !Boolean.TRUE.equals(e.getFinished()))
+                .collect(Collectors.toList());
+            case "seriesTerminadas" -> base.stream()
+                .filter(e -> Boolean.TRUE.equals(e.getSeriesFinished()))
+                .collect(Collectors.toList());
+            case "seriesEnCurso"    -> base.stream()
+                .filter(e -> !Boolean.TRUE.equals(e.getSeriesFinished()))
+                .collect(Collectors.toList());
+            case "pelisEnCine"      -> base.stream()
+                .filter(e -> Boolean.TRUE.equals(e.getSeenInCinema()))
+                .collect(Collectors.toList());
+            case "pelisEnCasa"      -> base.stream()
+                .filter(e -> !Boolean.TRUE.equals(e.getSeenInCinema()))
+                .collect(Collectors.toList());
+            case "comicsTerminados" -> base.stream()
+                .filter(e -> Boolean.TRUE.equals(e.getFinished()))
+                .collect(Collectors.toList());
+            case "comicsEnCurso"    -> base.stream()
+                .filter(e -> !Boolean.TRUE.equals(e.getFinished()))
+                .collect(Collectors.toList());
+            default                 -> base;
+        };
+    }
+
+    private LocalDate periodFrom(String p, LocalDate now) {
+        return switch (p) {
+            case "semana" -> now.minusDays(now.getDayOfWeek().getValue() - 1);
+            case "anio"   -> now.withDayOfYear(1);
+            case "todo"   -> LocalDate.of(2000, 1, 1);
+            default       -> now.withDayOfMonth(1);
+        };
     }
 
     private Map<String, Object> buildTypeStats(List<Entry> entries, String tipo) {

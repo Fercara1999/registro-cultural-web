@@ -27,6 +27,32 @@ public class EntryController {
     private final EntryService service;
     private static final DateTimeFormatter LABEL_FMT = DateTimeFormatter.ofPattern("dd/MM");
 
+    // Etiquetas legibles para cada KPI
+    private static final Map<String, String> KPI_LABELS = Map.ofEntries(
+        Map.entry("total",            "Todos los registros"),
+        Map.entry("capitulosSeries",  "Cap\u00edtulos de series"),
+        Map.entry("capitulosLibros",  "Cap\u00edtulos de libros"),
+        Map.entry("peliculas",        "Pel\u00edculas"),
+        Map.entry("comics",           "C\u00f3mics"),
+        Map.entry("teatro",           "Teatro"),
+        Map.entry("cine",             "Vistos en el cine"),
+        Map.entry("librosTerminados", "Libros terminados"),
+        Map.entry("librosEnCurso",    "Libros en curso"),
+        Map.entry("seriesTerminadas", "Series terminadas"),
+        Map.entry("seriesEnCurso",    "Series en curso"),
+        Map.entry("pelisEnCine",      "Pel\u00edculas en el cine"),
+        Map.entry("pelisEnCasa",      "Pel\u00edculas en casa"),
+        Map.entry("comicsTerminados", "C\u00f3mics terminados"),
+        Map.entry("comicsEnCurso",    "C\u00f3mics en curso")
+    );
+
+    private static final Map<String, String> PERIOD_LABELS = Map.of(
+        "semana", "esta semana",
+        "mes",    "este mes",
+        "anio",   "este a\u00f1o",
+        "todo",   "todo el tiempo"
+    );
+
     public EntryController(EntryService service) { this.service = service; }
 
     @GetMapping("/")
@@ -293,6 +319,24 @@ public class EntryController {
         return "estadisticas";
     }
 
+    @GetMapping("/estadisticas/detalle")
+    public String estadisticasDetalle(
+            @RequestParam(required = false, defaultValue = "mes") String period,
+            @RequestParam(required = false, defaultValue = "Todos") String tipo,
+            @RequestParam(required = false, defaultValue = "total") String kpi,
+            Model model) {
+        List<Entry> entries = service.getDetalleRegistros(period, tipo, kpi);
+        String titulo = KPI_LABELS.getOrDefault(kpi, kpi);
+        String periodoLabel = PERIOD_LABELS.getOrDefault(period, period);
+        model.addAttribute("entries",      entries);
+        model.addAttribute("detalleTitle", titulo + " — " + periodoLabel);
+        model.addAttribute("period",       period);
+        model.addAttribute("tipo",         tipo);
+        model.addAttribute("kpi",          kpi);
+        model.addAttribute("backUrl",      "/estadisticas?period=" + period + "&tipo=" + tipo);
+        return "detalle-stats";
+    }
+
     @GetMapping("/covers/{filename}")
     @ResponseBody
     public org.springframework.core.io.Resource serveFile(@PathVariable String filename) throws IOException {
@@ -339,7 +383,6 @@ public class EntryController {
         String titleTrimmed = title.trim();
         String titleLower   = titleTrimmed.toLowerCase();
 
-        // Portada existente
         service.getAll().stream()
             .filter(e -> !e.isPending())
             .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
@@ -350,7 +393,6 @@ public class EntryController {
         if (type.contains("Serie")) {
             Entry last = service.getLastSeriesEntry(titleTrimmed);
             if (last == null) {
-                // Fallback con LOWER
                 last = service.getAll().stream()
                     .filter(e -> !e.isPending())
                     .filter(e -> e.getType() != null && e.getType().contains("Serie"))
@@ -362,7 +404,6 @@ public class EntryController {
             if (last != null) {
                 boolean done = Boolean.TRUE.equals(last.getSeasonFinished()) || Boolean.TRUE.equals(last.getSeriesFinished());
                 int targetSeason = (season != null) ? season : (done ? last.getSeason() + 1 : last.getSeason());
-                // Si se pide una temporada concreta, buscar el último episodio de esa temporada
                 if (season != null) {
                     Entry lastInSeason = service.getAll().stream()
                         .filter(e -> !e.isPending())
@@ -386,13 +427,8 @@ public class EntryController {
             }
 
         } else if (type.contains("Libro")) {
-            // Autor: usando el repositorio directamente (LOWER+TRIM en la query)
             String author = service.getAuthorForTitle(titleTrimmed);
-            if (author != null && !author.isBlank()) {
-                result.put("author", author);
-            }
-
-            // Capítulo sugerido: el siguiente al mayor registrado
+            if (author != null && !author.isBlank()) result.put("author", author);
             service.getAll().stream()
                 .filter(e -> !e.isPending())
                 .filter(e -> e.getType() != null && e.getType().contains("Libro"))
@@ -407,7 +443,6 @@ public class EntryController {
                 .filter(e -> e.getType() != null && e.getType().contains("mic"))
                 .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
                 .collect(Collectors.toList());
-
             entries.stream()
                 .filter(e -> e.getComicVolume() != null)
                 .max(Comparator.comparingInt(Entry::getComicVolume))
@@ -415,7 +450,6 @@ public class EntryController {
                     boolean tomoTerminado = Boolean.TRUE.equals(last.getFinished());
                     result.put("comicVolume", tomoTerminado ? last.getComicVolume() + 1 : last.getComicVolume());
                 });
-
             entries.stream()
                 .filter(e -> e.getComicIssue() != null)
                 .max(Comparator.comparingInt(Entry::getComicIssue))
@@ -473,9 +507,7 @@ public class EntryController {
         if (autoCoverUrl != null && !autoCoverUrl.isBlank()) {
             try { return downloadRemoteCover(autoCoverUrl, service.getCoversDir()); } catch (IOException e) { /* sin portada */ }
         }
-        if (existingCoverPath != null && !existingCoverPath.isBlank()) {
-            return existingCoverPath;
-        }
+        if (existingCoverPath != null && !existingCoverPath.isBlank()) return existingCoverPath;
         return null;
     }
 
