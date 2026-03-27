@@ -215,10 +215,8 @@ function _doFetchCover() {
       if (data.author && data.author.trim()) {
         const authEl = document.querySelector('input[name="author"]');
         if (authEl) {
-          // El campo ya existe en el DOM: rellenar directamente
           if (!authEl.value.trim()) authEl.value = data.author;
         } else {
-          // El campo aún no existe (se creará en updateDynamicFields): guardarlo
           _pendingAuthor = data.author;
         }
       }
@@ -346,9 +344,9 @@ function _doFetchHint() {
         if (seasonEl2 && data.season  != null) seasonEl2.value = data.season;
         if (episodeEl && data.episode != null) episodeEl.value = data.episode;
       } else if (type.includes('Libro')) {
-        const chapEl = document.querySelector('input[name="chapters"]');
+        const chapEl = document.getElementById('chaptersInput');
         const authEl = document.querySelector('input[name="author"]');
-        if (chapEl && data.chapters != null) chapEl.value = data.chapters;
+        if (chapEl && data.chapters != null && !chapEl.value.trim()) chapEl.value = data.chapters;
         if (authEl && data.author   != null && authEl.value === '') authEl.value = data.author;
       } else if (type.includes('mic')) {
         const volEl   = document.querySelector('input[name="comicVolume"]');
@@ -370,10 +368,15 @@ function updateDynamicFields(prefill) {
   const fs = 'style="width:100%;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--input);color:var(--text);font-size:.92rem"';
   let html = '';
   if (type.includes('Libro')) {
+    const chapVal = d.chapters != null ? String(d.chapters) : '';
     html = `
       <div class="form-row">
         <div class="form-group flex-grow"><label>✍️ Autor</label><input type="text" name="author" ${fs} value="${d.author||''}" oninput="fetchAutoCover()"/></div>
-        <div class="form-group"><label>📖 Capítulo leído</label><input type="number" name="chapters" ${fs} min="1" value="${d.chapters||''}"/></div>
+        <div class="form-group">
+          <label>📖 Capítulo leído <small style="color:var(--muted);font-weight:400">(p.ej: 5 ó 5-10 ó 5,6,7)</small></label>
+          <input type="text" name="chapters" id="chaptersInput" ${fs} placeholder="5 ó 5-10 ó 5,6" value="${chapVal}" oninput="previewChapters()"/>
+          <span id="chaptersPreview" style="font-size:0.75rem;color:var(--accent);margin-top:3px"></span>
+        </div>
       </div>
       <div class="check-row"><label><input type="checkbox" name="finished" value="true" ${d.finished=='true'?'checked':''} onchange="syncStarsVisibility()"/> 📘 Libro terminado</label></div>`;
   } else if (type.includes('Serie')) {
@@ -450,6 +453,15 @@ function updateDynamicFields(prefill) {
     fetchAutoCover();
     fetchEntryHint();
   }
+}
+
+function previewChapters() {
+  const input   = document.getElementById('chaptersInput');
+  const preview = document.getElementById('chaptersPreview');
+  if (!input || !preview) return;
+  const nums = parseIssueRange(input.value);
+  if (nums.length <= 1) { preview.textContent = ''; return; }
+  preview.textContent = `ℹ️ Se crearán ${nums.length} registros: cap. ${nums.join(', ')}`;
 }
 
 function previewEpisodes() {
