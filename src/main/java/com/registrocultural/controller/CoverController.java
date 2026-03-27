@@ -8,10 +8,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Endpoint REST que el frontend llama para obtener la URL de portada
- * (y datos extra como director) según el tipo y título.
- */
 @RestController
 @RequestMapping("/api/cover")
 public class CoverController {
@@ -25,9 +21,9 @@ public class CoverController {
     }
 
     /**
-     * GET /api/cover/search?type=Pelicula&title=Oppenheimer&extra=
-     * Devuelve: { "url": "https://...", "director": "Christopher Nolan" }
-     * El campo "director" solo viene para películas.
+     * GET /api/cover/search?type=...&title=...&extra=
+     * Para libros devuelve: { "url": "...", "author": "..." }
+     * Para peliculas:       { "url": "...", "director": "..." }
      */
     @GetMapping("/search")
     public ResponseEntity<Map<String, String>> search(
@@ -45,8 +41,9 @@ public class CoverController {
             String url = tmdb.searchSerieCover(title);
             response.put("url", url != null ? url : "");
         } else if (type.contains("Libro")) {
-            String url = tmdb.searchBookCover(title, extra);
-            response.put("url", url != null ? url : "");
+            Map<String, String> details = tmdb.searchBookDetails(title, extra);
+            response.put("url",    details.getOrDefault("url", ""));
+            response.put("author", details.getOrDefault("author", ""));
         } else if (type.contains("mic") || type.equalsIgnoreCase("Comic") || type.equalsIgnoreCase("Cómic")) {
             String url = comicVine.searchComicCover(title);
             response.put("url", url != null ? url : "");

@@ -56,17 +56,11 @@ public class TmdbService {
         }
     }
 
-    /** Devuelve solo la URL de portada de una película (compatibilidad). */
     public String searchMovieCover(String title) {
         Map<String, String> details = searchMovieDetails(title);
         return details.get("posterUrl");
     }
 
-    /**
-     * Busca una película en TMDB y devuelve un mapa con:
-     *   - "posterUrl"  : URL de la imagen de portada (puede ser null)
-     *   - "director"   : nombre(s) del director separados por coma (puede ser null)
-     */
     public Map<String, String> searchMovieDetails(String title) {
         Map<String, String> result = new LinkedHashMap<>();
         if (bearerToken == null || bearerToken.isBlank()) return result;
@@ -86,7 +80,6 @@ public class TmdbService {
             if (posterPath != null && !posterPath.isBlank())
                 result.put("posterUrl", IMAGE_BASE + posterPath);
 
-            // Obtener créditos para el director
             int movieId = first.path("id").asInt(0);
             if (movieId > 0) {
                 try {
@@ -100,17 +93,11 @@ public class TmdbService {
                         .filter(m -> "Director".equals(m.path("job").asText()))
                         .map(m -> m.path("name").asText())
                         .collect(Collectors.joining(", "));
-                    if (!directors.isBlank()) {
-                        result.put("director", directors);
-                        log.info("[TMDB] Director(es) para '{}': {}", title, directors);
-                    }
+                    if (!directors.isBlank()) result.put("director", directors);
                 } catch (Exception e) {
                     log.warn("[TMDB] No se pudieron obtener creditos para id {}: {}", movieId, e.getMessage());
                 }
             }
-
-            log.info("[TMDB] Resultado pelicula '{}': portada={}, director={}",
-                title, result.get("posterUrl"), result.get("director"));
         } catch (WebClientResponseException e) {
             log.error("[TMDB] Error HTTP {} buscando pelicula '{}': {}", e.getStatusCode(), title, e.getResponseBodyAsString());
         } catch (Exception e) {
@@ -122,17 +109,11 @@ public class TmdbService {
     public String searchSerieCover(String title) {
         if (bearerToken == null || bearerToken.isBlank()) return null;
         try {
-            log.info("[TMDB] Buscando serie: '{}'", title);
             String json = webClient.get()
                 .uri(BASE_URL + "/search/tv?query={q}&language=es-ES&page=1", title)
                 .header("Authorization", "Bearer " + bearerToken)
                 .retrieve().bodyToMono(String.class).block();
-            String result = extractPosterPath(json);
-            log.info("[TMDB] Resultado serie '{}': {}", title, result != null ? result : "sin resultado");
-            return result;
-        } catch (WebClientResponseException e) {
-            log.error("[TMDB] Error HTTP {} buscando serie '{}': {}", e.getStatusCode(), title, e.getResponseBodyAsString());
-            return null;
+            return extractPosterPath(json);
         } catch (Exception e) {
             log.error("[TMDB] Error buscando serie '{}': {}", title, e.getMessage());
             return null;
@@ -140,30 +121,37 @@ public class TmdbService {
     }
 
     /**
-     * Busca portada de libro en Google Books.
-     * Estrategia: primero busca con título+autor, si no hay resultado busca solo título.
+     * Busca portada y autor de libro en Google Books.
+     * Devuelve mapa con claves "url" y "author".
      */
-    public String searchBookCover(String title, String author) {
+    public Map<String, String> searchBookDetails(String title, String author) {
+        Map<String, String> result = new LinkedHashMap<>();
         try {
+            Map<String, String> found = null;
             if (author != null && !author.isBlank()) {
-                String url = _googleBooksSearch(
+                found = _googleBooksSearch(
                     "intitle:" + URLEncoder.encode(title, StandardCharsets.UTF_8)
                     + "+inauthor:" + URLEncoder.encode(author, StandardCharsets.UTF_8));
-                if (url != null) return url;
-                log.info("[Books] Sin resultado con autor, reintentando solo con titulo");
+                if (found == null) log.info("[Books] Sin resultado con autor, reintentando solo con titulo");
             }
-            String url = _googleBooksSearch("intitle:" + URLEncoder.encode(title, StandardCharsets.UTF_8));
-            if (url != null) return url;
-            url = _googleBooksSearch(URLEncoder.encode(title, StandardCharsets.UTF_8));
-            log.info("[Books] Resultado final para '{}': {}", title, url != null ? url : "sin resultado");
-            return url;
+            if (found == null)
+                found = _googleBooksSearch("intitle:" + URLEncoder.encode(title, StandardCharsets.UTF_8));
+            if (found == null)
+                found = _googleBooksSearch(URLEncoder.encode(title, StandardCharsets.UTF_8));
+            if (found != null) result.putAll(found);
+            log.info("[Books] Resultado final para '{}': url={}, author={}", title, result.get("url"), result.get("author"));
         } catch (Exception e) {
             log.error("[Books] Error buscando libro '{}': {}", title, e.getMessage());
-            return null;
         }
+        return result;
     }
 
-    private String _googleBooksSearch(String encodedQuery) {
+    /** Compatibilidad con llamadas anteriores: devuelve solo la URL. */
+    public String searchBookCover(String title, String author) {
+        return searchBookDetails(title, author).get("url");
+    }
+
+    private Map<String, String> _googleBooksSearch(String encodedQuery) {
         try {
             String json = webClient.get()
                 .uri(BOOKS_URL + "/volumes?q=" + encodedQuery + "&maxResults=3&orderBy=relevance")
@@ -172,18 +160,27 @@ public class TmdbService {
             JsonNode items = root.path("items");
             if (!items.isArray() || items.size() == 0) return null;
             for (JsonNode item : items) {
-                JsonNode img = item.path("volumeInfo").path("imageLinks");
+                JsonNode volumeInfo = item.path("volumeInfo");
+                JsonNode img = volumeInfo.path("imageLinks");
                 String url = img.path("thumbnail").asText(null);
                 if (url == null) url = img.path("smallThumbnail").asText(null);
                 if (url != null && !url.isBlank()) {
-                    url = url.replace("http://", "https://")
-                             .replaceAll("&edge=curl", "");
-                    log.info("[Books] Portada encontrada: {}", url);
-                    return url;
+                    url = url.replace("http://", "https://").replaceAll("&edge=curl", "");
+                    Map<String, String> entry = new LinkedHashMap<>();
+                    entry.put("url", url);
+                    JsonNode authorsNode = volumeInfo.path("authors");
+                    if (authorsNode.isArray() && authorsNode.size() > 0) {
+                        String authors = StreamSupport.stream(authorsNode.spliterator(), false)
+                            .map(JsonNode::asText)
+                            .collect(Collectors.joining(", "));
+                        if (!authors.isBlank()) entry.put("author", authors);
+                    }
+                    log.info("[Books] Encontrado: url={}, author={}", url, entry.get("author"));
+                    return entry;
                 }
             }
         } catch (Exception e) {
-            log.warn("[Books] Error en búsqueda '{}': {}", encodedQuery, e.getMessage());
+            log.warn("[Books] Error en busqueda '{}': {}", encodedQuery, e.getMessage());
         }
         return null;
     }

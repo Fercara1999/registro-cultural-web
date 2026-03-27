@@ -1,4 +1,4 @@
-// ── TEMA ──────────────────────────────────────────────────────────
+// ── TEMA ────────────────────────────────────────────────────────
 function toggleTheme() {
   const body = document.body;
   const isDark = body.getAttribute('data-theme') === 'dark';
@@ -16,7 +16,7 @@ function toggleTheme() {
   }
 })();
 
-// ── ESTRELLAS ─────────────────────────────────────────────────
+// ── ESTRELLAS ───────────────────────────────────────────────
 function initStars(initial) {
   const row   = document.getElementById('starRow');
   const input = document.getElementById('ratingInput');
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCoverDropZone();
 });
 
-// ── helpers drop zone visibility ────────────────────────────────
+// ── helpers drop zone visibility ─────────────────────────────────────
 function _showDropZone() {
   const wrap = document.getElementById('coverDropZone')?.parentElement;
   if (wrap) wrap.style.display = '';
@@ -82,7 +82,7 @@ function _hideDropZone() {
   if (wrap) wrap.style.display = 'none';
 }
 
-// ── COVER DROP ZONE ────────────────────────────────────────────
+// ── COVER DROP ZONE ──────────────────────────────────────────
 function initCoverDropZone() {
   const zone = document.getElementById('coverDropZone');
   if (!zone) return;
@@ -174,7 +174,6 @@ function fetchAutoCover() {
 }
 
 function _doFetchCover() {
-  // Si ya hay portada existente activa, no buscar
   const existingPath = document.getElementById('existingCoverPath');
   if (existingPath && existingPath.value.trim()) return;
 
@@ -198,18 +197,21 @@ function _doFetchCover() {
   fetch('/api/cover/search?' + params)
     .then(r => r.json())
     .then(data => {
-      // Doble check: si mientras esperaba la respuesta se activó una portada existente, ignorar
       const ep = document.getElementById('existingCoverPath');
       if (ep && ep.value.trim()) return;
 
       if (data.url) _showCoverPreview(data.url); else _hideCoverPreview();
 
-      // Autorellenar director si viene de TMDB y el campo está vacío
+      // Autorellenar director (películas)
       if (data.director && data.director.trim()) {
         const dirEl = document.querySelector('input[name="director"]');
-        if (dirEl && !dirEl.value.trim()) {
-          dirEl.value = data.director;
-        }
+        if (dirEl && !dirEl.value.trim()) dirEl.value = data.director;
+      }
+
+      // Autorellenar autor (libros) — solo si el campo está vacío
+      if (data.author && data.author.trim()) {
+        const authEl = document.querySelector('input[name="author"]');
+        if (authEl && !authEl.value.trim()) authEl.value = data.author;
       }
     })
     .catch(() => {});
@@ -251,7 +253,7 @@ function _hideCoverPreview() {
   if (hiddenInput) hiddenInput.value = '';
 }
 
-// ── PORTADA EXISTENTE (reutilizar de registro previo) ────────────────
+// ── PORTADA EXISTENTE (reutilizar de registro previo) ────────────────────
 function _showExistingCoverHint(coverPath) {
   clearTimeout(coverDebounce);
   _hideCoverPreview();
@@ -294,7 +296,7 @@ function _clearExistingCover() {
   fetchAutoCover();
 }
 
-// ── HINT ─────────────────────────────────────────────────────────
+// ── HINT ───────────────────────────────────────────────────
 let hintDebounce = null;
 
 function fetchEntryHint() {
@@ -373,7 +375,7 @@ function updateDynamicFields(prefill) {
           <input type="number" name="season" ${fs} min="1" value="${d.season||''}" oninput="fetchEntryHint()"/>
         </div>
         <div class="form-group">
-          <label>🎞️ Capítulo <small style="color:var(--muted);font-weight:400">(p.ej: 3 ó 3-5 ó 3,4)</small></label>
+          <label>🎥 Capítulo <small style="color:var(--muted);font-weight:400">(p.ej: 3 ó 3-5 ó 3,4)</small></label>
           <input type="text" name="episode" id="episodeInput" ${fs} placeholder="3 ó 3-5 ó 3,4" value="${epVal}" oninput="previewEpisodes()"/>
           <span id="episodePreview" style="font-size:0.75rem;color:var(--accent);margin-top:3px"></span>
         </div>
@@ -520,7 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCoverDropZone();
 });
 
-// ── EDIT FORM ─────────────────────────────────────────────────────
+// ── EDIT FORM ───────────────────────────────────────────────────
 function initEditForm() {
   const box = document.getElementById('dynamicFields');
   if (!box) return;
