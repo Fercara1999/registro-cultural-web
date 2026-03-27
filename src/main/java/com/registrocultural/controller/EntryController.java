@@ -63,7 +63,7 @@ public class EntryController {
             @RequestParam(required = false) String description,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) Integer rating,
-            @RequestParam(required = false) Integer chapters,
+            @RequestParam(required = false) String chaptersRaw,
             @RequestParam(required = false) String author,
             @RequestParam(required = false) Integer season,
             @RequestParam(required = false) String episode,
@@ -84,14 +84,17 @@ public class EntryController {
         LocalDate d = date != null ? date : LocalDate.now();
         List<Integer> episodes = parseIssueRange(episode);
         List<Integer> issues   = parseIssueRange(comicIssue);
+        List<Integer> chaptersList = parseIssueRange(chaptersRaw);
 
         boolean multiEpisode = episodes.size() > 1;
         boolean multiIssue   = issues.size()   > 1;
+        boolean multiChapter = chaptersList.size() > 1;
 
-        if (!multiEpisode && !multiIssue) {
-            Integer epInt    = episodes.isEmpty() ? null : episodes.get(0);
-            Integer issueInt = issues.isEmpty()   ? null : issues.get(0);
-            Entry entry = buildEntry(title, type, description, d, rating, chapters, author,
+        if (!multiEpisode && !multiIssue && !multiChapter) {
+            Integer epInt      = episodes.isEmpty()     ? null : episodes.get(0);
+            Integer issueInt   = issues.isEmpty()       ? null : issues.get(0);
+            Integer chaptersInt = chaptersList.isEmpty() ? null : chaptersList.get(0);
+            Entry entry = buildEntry(title, type, description, d, rating, chaptersInt, author,
                 season, epInt, venue, director, seenInCinema, isSingleVolume,
                 comicVolume, issueInt, finished, seasonFinished, seriesFinished);
             entry.setPending(false);
@@ -102,12 +105,30 @@ public class EntryController {
         } else {
             String coverPath = resolveCoverPath(cover, autoCoverUrl, existingCoverPath);
 
-            if (multiEpisode) {
+            if (multiChapter) {
+                int lastIdx = chaptersList.size() - 1;
+                for (int i = 0; i < chaptersList.size(); i++) {
+                    boolean isLast = (i == lastIdx);
+                    Entry entry = buildEntry(title, type, description, d,
+                        isLast ? rating : null, chaptersList.get(i), author,
+                        season, episodes.isEmpty() ? null : episodes.get(0),
+                        venue, director, seenInCinema, isSingleVolume,
+                        comicVolume, issues.isEmpty() ? null : issues.get(0),
+                        isLast ? finished : null, isLast ? seasonFinished : null, isLast ? seriesFinished : null);
+                    entry.setPending(false);
+                    entry.setCoverPath(coverPath);
+                    service.save(entry);
+                }
+                ra.addFlashAttribute("success", "\u2705 " + chaptersList.size() + " registros creados (cap. " +
+                    chaptersList.get(0) + "\u2013" + chaptersList.get(lastIdx) + ")");
+
+            } else if (multiEpisode) {
                 int lastIdx = episodes.size() - 1;
                 for (int i = 0; i < episodes.size(); i++) {
                     boolean isLast = (i == lastIdx);
+                    Integer chaptersInt = chaptersList.isEmpty() ? null : chaptersList.get(0);
                     Entry entry = buildEntry(title, type, description, d,
-                        isLast ? rating : null, chapters, author,
+                        isLast ? rating : null, chaptersInt, author,
                         season, episodes.get(i), venue, director, seenInCinema, isSingleVolume,
                         comicVolume, issues.isEmpty() ? null : issues.get(0),
                         isLast ? finished : null, isLast ? seasonFinished : null, isLast ? seriesFinished : null);
@@ -122,8 +143,9 @@ public class EntryController {
                 int lastIdx = issues.size() - 1;
                 for (int i = 0; i < issues.size(); i++) {
                     boolean isLast = (i == lastIdx);
+                    Integer chaptersInt = chaptersList.isEmpty() ? null : chaptersList.get(0);
                     Entry entry = buildEntry(title, type, description, d,
-                        isLast ? rating : null, chapters, author,
+                        isLast ? rating : null, chaptersInt, author,
                         season, episodes.isEmpty() ? null : episodes.get(0),
                         venue, director, seenInCinema, isSingleVolume,
                         comicVolume, issues.get(i),
@@ -315,7 +337,7 @@ public class EntryController {
         if (title.isBlank()) return ResponseEntity.ok(result);
         String titleLower = title.trim().toLowerCase();
 
-        // Portada existente: buscar el último registro con ese título y coverPath
+        // Portada existente
         service.getAll().stream()
             .filter(e -> !e.isPending())
             .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
@@ -354,15 +376,19 @@ public class EntryController {
                 .filter(e -> !e.isPending())
                 .filter(e -> e.getType() != null && e.getType().contains("Libro"))
                 .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
-                .filter(e -> e.getChapters() != null)
                 .collect(Collectors.toList());
-            if (!entries.isEmpty()) {
-                Entry last = entries.stream().max(Comparator.comparingInt(Entry::getChapters)).orElse(null);
-                if (last != null) {
-                    result.put("chapters", last.getChapters() + 1);
-                    if (last.getAuthor() != null && !last.getAuthor().isBlank()) result.put("author", last.getAuthor());
-                }
-            }
+
+            // Autor: se recupera del primer registro con autor informado, independientemente de si tiene capítulos
+            entries.stream()
+                .filter(e -> e.getAuthor() != null && !e.getAuthor().isBlank())
+                .findFirst()
+                .ifPresent(e -> result.put("author", e.getAuthor()));
+
+            // Capítulo sugerido: el siguiente al mayor registrado
+            entries.stream()
+                .filter(e -> e.getChapters() != null)
+                .max(Comparator.comparingInt(Entry::getChapters))
+                .ifPresent(last -> result.put("chapters", last.getChapters() + 1));
 
         } else if (type.contains("mic")) {
             List<Entry> entries = service.getAll().stream()
