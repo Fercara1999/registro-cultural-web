@@ -15,7 +15,7 @@
     }
   };
 
-  // Barras por tipo
+  // Barras por tipo (solo en Todos)
   const barEl = document.getElementById('barChart');
   if (barEl && typeof porTipo !== 'undefined') {
     new Chart(barEl, {
@@ -28,7 +28,7 @@
     });
   }
 
-  // Tarta distribución
+  // Tarta distribución (solo en Todos)
   const pieEl = document.getElementById('pieChart');
   if (pieEl && typeof porTipo !== 'undefined') {
     new Chart(pieEl, {
@@ -41,23 +41,26 @@
     });
   }
 
-  // Línea actividad mensual
+  // Gráfico temporal adaptado al periodo
   const lineEl = document.getElementById('lineChart');
-  if (lineEl && typeof porMes !== 'undefined') {
+  if (lineEl && typeof porPeriodo !== 'undefined') {
+    // semana -> barras; resto -> línea
+    const chartType = (typeof periodKey !== 'undefined' && periodKey === 'semana') ? 'bar' : 'line';
+    const dataset = chartType === 'bar'
+      ? { data: Object.values(porPeriodo), backgroundColor: COLORS[0], borderRadius: 6 }
+      : { data: Object.values(porPeriodo), borderColor: '#6c5ce7',
+          backgroundColor: 'rgba(108,92,231,0.12)', fill: true, tension: 0.3, pointRadius: 4 };
     new Chart(lineEl, {
-      type: 'line',
+      type: chartType,
       data: {
-        labels: Object.keys(porMes),
-        datasets: [{
-          data: Object.values(porMes), borderColor: '#6c5ce7',
-          backgroundColor: 'rgba(108,92,231,0.12)', fill: true, tension: 0.3, pointRadius: 4
-        }]
+        labels: Object.keys(porPeriodo),
+        datasets: [dataset]
       },
-      options: defaults
+      options: { ...defaults, plugins: { legend: { display: false } } }
     });
   }
 
-  // Barras por día
+  // Barras por día de la semana
   const dayEl = document.getElementById('dayChart');
   if (dayEl && typeof porDia !== 'undefined') {
     new Chart(dayEl, {

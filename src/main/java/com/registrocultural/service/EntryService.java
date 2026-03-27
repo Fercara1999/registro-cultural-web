@@ -23,9 +23,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
+import java.time.temporal.WeekFields;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalDouble;
@@ -170,7 +172,8 @@ public class EntryService {
     public Map<String, Object> getStats(String period, String tipo) {
         List<Entry> all = getAllNonPending();
         LocalDate now  = LocalDate.now();
-        LocalDate from = switch (period != null ? period : "mes") {
+        String p = period != null ? period : "mes";
+        LocalDate from = switch (p) {
             case "semana" -> now.minusDays(now.getDayOfWeek().getValue() - 1);
             case "anio"   -> now.withDayOfYear(1);
             case "todo"   -> LocalDate.of(2000, 1, 1);
@@ -201,17 +204,72 @@ public class EntryService {
         stats.put("cineTotal",  filteredAll.stream().filter(e -> Boolean.TRUE.equals(e.getSeenInCinema())).count());
         stats.put("cinemaList", filteredAll.stream().filter(e -> Boolean.TRUE.equals(e.getSeenInCinema())).collect(Collectors.toList()));
 
-        // Capítulos de series vistos en el periodo
         long capitulosSeries = filtered.stream()
             .filter(e -> e.getType() != null && e.getType().contains("Serie") && e.getEpisode() != null)
             .count();
         stats.put("capitulosSeries", capitulosSeries);
 
-        // Capítulos de libros leídos en el periodo
         long capitulosLibros = filtered.stream()
             .filter(e -> e.getType() != null && e.getType().contains("Libro") && e.getChapters() != null)
             .count();
         stats.put("capitulosLibros", capitulosLibros);
+
+        // ── Gráfico temporal adaptado al periodo ──
+        Map<String, Long> porPeriodo;
+        String periodLabel;
+        if ("semana".equals(p)) {
+            // Día a día: Lun..Dom (etiqueta: dd/MM)
+            periodLabel = "Evolución diaria";
+            LocalDate monday = now.minusDays(now.getDayOfWeek().getValue() - 1);
+            porPeriodo = new LinkedHashMap<>();
+            String[] dayNames = {"Lun","Mar","Mi\u00e9","Jue","Vie","S\u00e1b","Dom"};
+            for (int i = 0; i < 7; i++) {
+                LocalDate d = monday.plusDays(i);
+                String lbl = dayNames[i];
+                final LocalDate fd = d;
+                long cnt = filtered.stream().filter(e -> e.getDate().equals(fd)).count();
+                porPeriodo.put(lbl, cnt);
+            }
+        } else if ("mes".equals(p)) {
+            // Semana a semana dentro del mes: S1, S2, S3, S4(+)
+            periodLabel = "Evolución semanal";
+            porPeriodo = new LinkedHashMap<>();
+            for (Entry e : filtered) {
+                int dom = e.getDate().getDayOfMonth();
+                String semLbl = "S" + ((dom - 1) / 7 + 1);
+                porPeriodo.merge(semLbl, 1L, Long::sum);
+            }
+            // Garantizar S1..S4 aunque estén a 0
+            Map<String, Long> ordered = new LinkedHashMap<>();
+            for (String s : new String[]{"S1","S2","S3","S4","S5"}) {
+                long v = porPeriodo.getOrDefault(s, 0L);
+                if (v > 0 || !"S5".equals(s)) ordered.put(s, v);
+            }
+            porPeriodo = ordered;
+        } else if ("anio".equals(p)) {
+            // Mes a mes
+            periodLabel = "Actividad mensual";
+            porPeriodo = new TreeMap<>(filtered.stream().collect(
+                Collectors.groupingBy(
+                    e -> e.getDate().getYear() + "-" + String.format("%02d", e.getDate().getMonthValue()),
+                    Collectors.counting())));
+        } else {
+            // Todo el tiempo: año a año
+            periodLabel = "Evolución anual";
+            porPeriodo = new TreeMap<>(filtered.stream().collect(
+                Collectors.groupingBy(
+                    e -> String.valueOf(e.getDate().getYear()),
+                    Collectors.counting())));
+        }
+        stats.put("porPeriodo",  porPeriodo);
+        stats.put("periodLabel", periodLabel);
+
+        // porMes mantenido para compatibilidad (ya no se usa en el gráfico)
+        Map<String, Long> porMes = new TreeMap<>(filtered.stream().collect(
+            Collectors.groupingBy(
+                e -> e.getDate().getYear() + "-" + String.format("%02d", e.getDate().getMonthValue()),
+                Collectors.counting())));
+        stats.put("porMes", porMes);
 
         Map<String, Long> porTipo = new LinkedHashMap<>();
         if (!filterTipo) {
@@ -225,18 +283,12 @@ public class EntryService {
         }
         stats.put("porTipo", porTipo);
 
-        Map<String, Long> porMes = new TreeMap<>(filtered.stream().collect(
-            Collectors.groupingBy(
-                e -> e.getDate().getYear() + "-" + String.format("%02d", e.getDate().getMonthValue()),
-                Collectors.counting())));
-        stats.put("porMes", porMes);
-
         String[] dias = {"Lun","Mar","Mi\u00e9","Jue","Vie","S\u00e1b","Dom"};
         long[] porDia = new long[7];
         for (Entry e : filtered) porDia[e.getDate().getDayOfWeek().getValue() - 1]++;
         stats.put("porDia",     porDia);
         stats.put("diasLabels", dias);
-        stats.put("period",     period != null ? period : "mes");
+        stats.put("period",     p);
 
         if (filterTipo) {
             stats.putAll(buildTypeStats(filtered, tipo));

@@ -44,14 +44,12 @@
   <!-- KPIs principales -->
   <div class="kpi-row">
     <div class="kpi kpi-accent">  <span class="kpi-icon">📚</span><span class="kpi-val" th:text="${total}">0</span>  <span class="kpi-lbl">En periodo</span></div>
-    <!-- Todos: capsítulos series sustituye total histórico -->
     <div class="kpi kpi-accent2" th:if="${selectedTipo=='Todos'}">
       <span class="kpi-icon">📺</span><span class="kpi-val" th:text="${capitulosSeries}">0</span><span class="kpi-lbl">Capítulos series</span>
     </div>
     <div class="kpi kpi-success" th:if="${selectedTipo=='Todos'}"> <span class="kpi-icon">📖</span><span class="kpi-val" th:text="${capitulosLibros}">0</span>  <span class="kpi-lbl">Capítulos libros</span></div>
     <div class="kpi kpi-warn"    th:if="${selectedTipo=='Todos'}"> <span class="kpi-icon">🎥</span><span class="kpi-val" th:text="${peliculas}">0</span><span class="kpi-lbl">Películas</span></div>
     <div class="kpi kpi-purple"  th:if="${selectedTipo=='Todos'}"> <span class="kpi-icon">💭</span><span class="kpi-val" th:text="${comics}">0</span>  <span class="kpi-lbl">Cómics</span></div>
-    <!-- En cine solo para películas o Todos -->
     <div class="kpi kpi-cinema" th:if="${selectedTipo=='Todos' or selectedTipo=='Película'}">
       <span class="kpi-icon">🎫</span><span class="kpi-val" th:text="${cine}">0</span><span class="kpi-lbl">En cine (periodo)</span>
     </div>
@@ -104,7 +102,12 @@
     <div class="chart-card"><h3>Distribución</h3><canvas id="pieChart" width="260"></canvas></div>
   </div>
 
-  <div class="chart-card full-width"><h3>Actividad mensual</h3><canvas id="lineChart"></canvas></div>
+  <!-- Gráfico temporal adaptado al periodo -->
+  <div class="chart-card full-width">
+    <h3 th:text="${periodLabel}">Actividad</h3>
+    <canvas id="lineChart"></canvas>
+  </div>
+
   <div class="chart-card full-width"><h3>Por día de la semana</h3><canvas id="dayChart"></canvas></div>
 
   <!-- Lista cine solo en Película o Todos -->
@@ -126,10 +129,12 @@
   <p th:if="${selectedTipo=='Película' and (cinemaList == null or cinemaList.isEmpty())}" class="empty-msg">💭 No hay películas registradas en el cine</p>
 
   <script th:inline="javascript">
-    const porTipo  = /*[[${porTipo}]]*/ {};
-    const porMes   = /*[[${porMes}]]*/ {};
-    const porDia   = /*[[${porDia}]]*/ [];
-    const diasLbls = /*[[${diasLabels}]]*/ [];
+    const porTipo    = /*[[${porTipo}]]*/ {};
+    const porPeriodo = /*[[${porPeriodo}]]*/ {};
+    const porMes     = /*[[${porMes}]]*/ {};
+    const porDia     = /*[[${porDia}]]*/ [];
+    const diasLbls   = /*[[${diasLabels}]]*/ [];
+    const periodKey  = /*[[${period}]]*/ 'mes';
   </script>
   <script th:src="@{/js/charts.js}"></script>
 </main>
