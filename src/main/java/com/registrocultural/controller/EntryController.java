@@ -336,9 +336,10 @@ public class EntryController {
         }
 
         if (title.isBlank()) return ResponseEntity.ok(result);
-        String titleLower = title.trim().toLowerCase();
+        String titleTrimmed = title.trim();
+        String titleLower   = titleTrimmed.toLowerCase();
 
-        // Portada existente: búsqueda exacta por título
+        // Portada existente
         service.getAll().stream()
             .filter(e -> !e.isPending())
             .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
@@ -347,52 +348,55 @@ public class EntryController {
             .ifPresent(e -> result.put("coverLocalPath", e.getCoverPath()));
 
         if (type.contains("Serie")) {
-            List<Entry> entries = service.getAll().stream()
-                .filter(e -> !e.isPending())
-                .filter(e -> e.getType() != null && e.getType().contains("Serie"))
-                .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
-                .filter(e -> e.getSeason() != null && e.getEpisode() != null)
-                .collect(Collectors.toList());
-
-            if (!entries.isEmpty()) {
-                List<Entry> inSeason = season != null
-                    ? entries.stream().filter(e -> e.getSeason().equals(season)).collect(Collectors.toList())
-                    : Collections.emptyList();
-                Entry last;
-                if (!inSeason.isEmpty()) {
-                    last = inSeason.stream().max(Comparator.comparingInt(Entry::getEpisode)).orElse(null);
+            Entry last = service.getLastSeriesEntry(titleTrimmed);
+            if (last == null) {
+                // Fallback con LOWER
+                last = service.getAll().stream()
+                    .filter(e -> !e.isPending())
+                    .filter(e -> e.getType() != null && e.getType().contains("Serie"))
+                    .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
+                    .filter(e -> e.getSeason() != null && e.getEpisode() != null)
+                    .max(Comparator.comparingInt(Entry::getSeason).thenComparingInt(Entry::getEpisode))
+                    .orElse(null);
+            }
+            if (last != null) {
+                boolean done = Boolean.TRUE.equals(last.getSeasonFinished()) || Boolean.TRUE.equals(last.getSeriesFinished());
+                int targetSeason = (season != null) ? season : (done ? last.getSeason() + 1 : last.getSeason());
+                // Si se pide una temporada concreta, buscar el último episodio de esa temporada
+                if (season != null) {
+                    Entry lastInSeason = service.getAll().stream()
+                        .filter(e -> !e.isPending())
+                        .filter(e -> e.getType() != null && e.getType().contains("Serie"))
+                        .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
+                        .filter(e -> e.getSeason() != null && e.getSeason().equals(season) && e.getEpisode() != null)
+                        .max(Comparator.comparingInt(Entry::getEpisode))
+                        .orElse(null);
+                    if (lastInSeason != null) {
+                        boolean seasonDone = Boolean.TRUE.equals(lastInSeason.getSeasonFinished()) || Boolean.TRUE.equals(lastInSeason.getSeriesFinished());
+                        result.put("season",  seasonDone ? lastInSeason.getSeason() + 1 : lastInSeason.getSeason());
+                        result.put("episode", seasonDone ? 1 : lastInSeason.getEpisode() + 1);
+                    } else {
+                        result.put("season", season);
+                        result.put("episode", 1);
+                    }
                 } else {
-                    last = entries.stream()
-                        .max(Comparator.comparingInt(Entry::getSeason).thenComparingInt(Entry::getEpisode)).orElse(null);
-                }
-                if (last != null) {
-                    boolean done = Boolean.TRUE.equals(last.getSeasonFinished()) || Boolean.TRUE.equals(last.getSeriesFinished());
                     result.put("season",  done ? last.getSeason() + 1 : last.getSeason());
                     result.put("episode", done ? 1 : last.getEpisode() + 1);
                 }
             }
 
         } else if (type.contains("Libro")) {
-            // Para libros buscamos primero por coincidencia exacta, luego por contains
-            // para tolerar pequeñas diferencias de espaciado o encoding
-            List<Entry> entries = service.getAll().stream()
+            // Autor: usando el repositorio directamente (LOWER+TRIM en la query)
+            String author = service.getAuthorForTitle(titleTrimmed);
+            if (author != null && !author.isBlank()) {
+                result.put("author", author);
+            }
+
+            // Capítulo sugerido: el siguiente al mayor registrado
+            service.getAll().stream()
                 .filter(e -> !e.isPending())
                 .filter(e -> e.getType() != null && e.getType().contains("Libro"))
-                .filter(e -> e.getTitle() != null &&
-                    (e.getTitle().trim().toLowerCase().equals(titleLower) ||
-                     e.getTitle().trim().toLowerCase().contains(titleLower) ||
-                     titleLower.contains(e.getTitle().trim().toLowerCase())))
-                .collect(Collectors.toList());
-
-            // Autor: primer registro con autor informado
-            entries.stream()
-                .filter(e -> e.getAuthor() != null && !e.getAuthor().isBlank())
-                .findFirst()
-                .ifPresent(e -> result.put("author", e.getAuthor()));
-
-            // Capítulo sugerido: el siguiente al mayor registrado (solo con match exacto)
-            entries.stream()
-                .filter(e -> e.getTitle().trim().toLowerCase().equals(titleLower))
+                .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
                 .filter(e -> e.getChapters() != null)
                 .max(Comparator.comparingInt(Entry::getChapters))
                 .ifPresent(last -> result.put("chapters", last.getChapters() + 1));
