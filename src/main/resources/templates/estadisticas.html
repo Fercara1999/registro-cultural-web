@@ -40,39 +40,51 @@
       </select>
     </form>
   </div>
+
+  <!-- KPIs principales -->
   <div class="kpi-row">
-    <div class="kpi kpi-accent">  <span class="kpi-icon">📚</span><span class="kpi-val" th:text="${total}">0</span>  <span class="kpi-lbl">en periodo</span></div>
-    <div class="kpi kpi-accent2"> <span class="kpi-icon">📋</span><span class="kpi-val" th:text="${totalAll}">0</span><span class="kpi-lbl">total histórico</span></div>
-    <div class="kpi kpi-success" th:if="${selectedTipo=='Todos'}"> <span class="kpi-icon">📖</span><span class="kpi-val" th:text="${libros}">0</span>  <span class="kpi-lbl">libros</span></div>
-    <div class="kpi kpi-warn"    th:if="${selectedTipo=='Todos'}"> <span class="kpi-icon">🎥</span><span class="kpi-val" th:text="${peliculas}">0</span><span class="kpi-lbl">películas</span></div>
-    <div class="kpi kpi-purple"  th:if="${selectedTipo=='Todos'}"> <span class="kpi-icon">💭</span><span class="kpi-val" th:text="${comics}">0</span>  <span class="kpi-lbl">cómics</span></div>
-    <div class="kpi kpi-cinema"> <span class="kpi-icon">🎫</span><span class="kpi-val" th:text="${cine}">0</span>   <span class="kpi-lbl">en cine (periodo)</span></div>
+    <div class="kpi kpi-accent">  <span class="kpi-icon">📚</span><span class="kpi-val" th:text="${total}">0</span>  <span class="kpi-lbl">En periodo</span></div>
+    <!-- Todos: capsítulos series sustituye total histórico -->
+    <div class="kpi kpi-accent2" th:if="${selectedTipo=='Todos'}">
+      <span class="kpi-icon">📺</span><span class="kpi-val" th:text="${capitulosSeries}">0</span><span class="kpi-lbl">Capítulos series</span>
+    </div>
+    <div class="kpi kpi-success" th:if="${selectedTipo=='Todos'}"> <span class="kpi-icon">📖</span><span class="kpi-val" th:text="${capitulosLibros}">0</span>  <span class="kpi-lbl">Capítulos libros</span></div>
+    <div class="kpi kpi-warn"    th:if="${selectedTipo=='Todos'}"> <span class="kpi-icon">🎥</span><span class="kpi-val" th:text="${peliculas}">0</span><span class="kpi-lbl">Películas</span></div>
+    <div class="kpi kpi-purple"  th:if="${selectedTipo=='Todos'}"> <span class="kpi-icon">💭</span><span class="kpi-val" th:text="${comics}">0</span>  <span class="kpi-lbl">Cómics</span></div>
+    <!-- En cine solo para películas o Todos -->
+    <div class="kpi kpi-cinema" th:if="${selectedTipo=='Todos' or selectedTipo=='Película'}">
+      <span class="kpi-icon">🎫</span><span class="kpi-val" th:text="${cine}">0</span><span class="kpi-lbl">En cine (periodo)</span>
+    </div>
   </div>
+
+  <!-- KPIs secundarios por tipo -->
   <div class="kpi-row" th:if="${selectedTipo=='Libro'}">
-    <div class="kpi kpi-success"><span class="kpi-icon">✅</span><span class="kpi-val" th:text="${librosTerminados}">0</span><span class="kpi-lbl">terminados</span></div>
-    <div class="kpi kpi-warn">   <span class="kpi-icon">📖</span><span class="kpi-val" th:text="${librosEnCurso}">0</span>  <span class="kpi-lbl">en curso</span></div>
-    <div class="kpi kpi-accent"> <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>   <span class="kpi-lbl">nota media</span></div>
-    <div class="kpi kpi-purple"> <span class="kpi-icon">✍️</span><span class="kpi-val" th:text="${autoresDistintos}">0</span><span class="kpi-lbl">autores distintos</span></div>
+    <div class="kpi kpi-success"><span class="kpi-icon">✅</span><span class="kpi-val" th:text="${librosTerminados}">0</span><span class="kpi-lbl">Terminados</span></div>
+    <div class="kpi kpi-warn">   <span class="kpi-icon">📖</span><span class="kpi-val" th:text="${librosEnCurso}">0</span>  <span class="kpi-lbl">En curso</span></div>
+    <div class="kpi kpi-accent"> <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>   <span class="kpi-lbl">Nota media</span></div>
+    <div class="kpi kpi-purple"> <span class="kpi-icon">✍️</span><span class="kpi-val" th:text="${autoresDistintos}">0</span><span class="kpi-lbl">Autores distintos</span></div>
   </div>
   <div class="kpi-row" th:if="${selectedTipo=='Serie'}">
-    <div class="kpi kpi-success"><span class="kpi-icon">✅</span><span class="kpi-val" th:text="${seriesTerminadas}">0</span><span class="kpi-lbl">terminadas</span></div>
-    <div class="kpi kpi-warn">   <span class="kpi-icon">📺</span><span class="kpi-val" th:text="${seriesEnCurso}">0</span>  <span class="kpi-lbl">en curso</span></div>
-    <div class="kpi kpi-accent"> <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>   <span class="kpi-lbl">nota media</span></div>
+    <div class="kpi kpi-success"><span class="kpi-icon">✅</span><span class="kpi-val" th:text="${seriesTerminadas}">0</span><span class="kpi-lbl">Terminadas</span></div>
+    <div class="kpi kpi-warn">   <span class="kpi-icon">📺</span><span class="kpi-val" th:text="${seriesEnCurso}">0</span>  <span class="kpi-lbl">En curso</span></div>
+    <div class="kpi kpi-accent"> <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>   <span class="kpi-lbl">Nota media</span></div>
   </div>
   <div class="kpi-row" th:if="${selectedTipo=='Película'}">
-    <div class="kpi kpi-cinema"><span class="kpi-icon">🎫</span><span class="kpi-val" th:text="${pelisEnCine}">0</span> <span class="kpi-lbl">en cine</span></div>
-    <div class="kpi kpi-accent"><span class="kpi-icon">📺</span><span class="kpi-val" th:text="${pelisEnCasa}">0</span><span class="kpi-lbl">en casa</span></div>
-    <div class="kpi kpi-warn">  <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>  <span class="kpi-lbl">nota media</span></div>
+    <div class="kpi kpi-cinema"><span class="kpi-icon">🎫</span><span class="kpi-val" th:text="${pelisEnCine}">0</span> <span class="kpi-lbl">En cine</span></div>
+    <div class="kpi kpi-accent"><span class="kpi-icon">📺</span><span class="kpi-val" th:text="${pelisEnCasa}">0</span><span class="kpi-lbl">En casa</span></div>
+    <div class="kpi kpi-warn">  <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>  <span class="kpi-lbl">Nota media</span></div>
   </div>
   <div class="kpi-row" th:if="${selectedTipo=='Teatro'}">
-    <div class="kpi kpi-accent"> <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>      <span class="kpi-lbl">nota media</span></div>
-    <div class="kpi kpi-purple"><span class="kpi-icon">🎭</span><span class="kpi-val" th:text="${lugaresDistintos}">0</span><span class="kpi-lbl">lugares distintos</span></div>
+    <div class="kpi kpi-accent"> <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>      <span class="kpi-lbl">Nota media</span></div>
+    <div class="kpi kpi-purple"><span class="kpi-icon">🎭</span><span class="kpi-val" th:text="${lugaresDistintos}">0</span><span class="kpi-lbl">Lugares distintos</span></div>
   </div>
   <div class="kpi-row" th:if="${selectedTipo=='Cómic'}">
-    <div class="kpi kpi-success"><span class="kpi-icon">✅</span><span class="kpi-val" th:text="${comicsTerminados}">0</span><span class="kpi-lbl">terminados</span></div>
-    <div class="kpi kpi-warn">   <span class="kpi-icon">💭</span><span class="kpi-val" th:text="${comicsEnCurso}">0</span>  <span class="kpi-lbl">en curso</span></div>
-    <div class="kpi kpi-accent"> <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>   <span class="kpi-lbl">nota media</span></div>
+    <div class="kpi kpi-success"><span class="kpi-icon">✅</span><span class="kpi-val" th:text="${comicsTerminados}">0</span><span class="kpi-lbl">Terminados</span></div>
+    <div class="kpi kpi-warn">   <span class="kpi-icon">💭</span><span class="kpi-val" th:text="${comicsEnCurso}">0</span>  <span class="kpi-lbl">En curso</span></div>
+    <div class="kpi kpi-accent"> <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span>   <span class="kpi-lbl">Nota media</span></div>
   </div>
+
+  <!-- Top autores / lugares -->
   <div class="chart-card full-width" th:if="${selectedTipo=='Libro' and topAutores != null and !topAutores.isEmpty()}">
     <h3>✍️ Top autores</h3>
     <div style="display:flex;flex-wrap:wrap;gap:.5rem;">
@@ -85,13 +97,18 @@
       <span th:each="l : ${topLugares}" class="chip" th:text="${l}"></span>
     </div>
   </div>
-  <div class="charts-row">
+
+  <!-- Gráficos tipo/distribución solo en Todos -->
+  <div class="charts-row" th:if="${selectedTipo=='Todos'}">
     <div class="chart-card flex-grow"><h3>Registros por tipo</h3><canvas id="barChart"></canvas></div>
     <div class="chart-card"><h3>Distribución</h3><canvas id="pieChart" width="260"></canvas></div>
   </div>
+
   <div class="chart-card full-width"><h3>Actividad mensual</h3><canvas id="lineChart"></canvas></div>
   <div class="chart-card full-width"><h3>Por día de la semana</h3><canvas id="dayChart"></canvas></div>
-  <div th:if="${cinemaList != null and !cinemaList.isEmpty()}">
+
+  <!-- Lista cine solo en Película o Todos -->
+  <div th:if="${(selectedTipo=='Todos' or selectedTipo=='Película') and cinemaList != null and !cinemaList.isEmpty()}">
     <div class="section-title">🎫 Películas vistas en el cine</div>
     <div class="chart-card full-width">
       <h3>🏙️ Lista de películas en el cine (<span th:text="${cineTotal}">0</span> en total)</h3>
@@ -106,7 +123,8 @@
       </div>
     </div>
   </div>
-  <p th:if="${cinemaList == null or cinemaList.isEmpty()}" class="empty-msg">💭 No hay películas registradas en el cine</p>
+  <p th:if="${selectedTipo=='Película' and (cinemaList == null or cinemaList.isEmpty())}" class="empty-msg">💭 No hay películas registradas en el cine</p>
+
   <script th:inline="javascript">
     const porTipo  = /*[[${porTipo}]]*/ {};
     const porMes   = /*[[${porMes}]]*/ {};

@@ -201,6 +201,18 @@ public class EntryService {
         stats.put("cineTotal",  filteredAll.stream().filter(e -> Boolean.TRUE.equals(e.getSeenInCinema())).count());
         stats.put("cinemaList", filteredAll.stream().filter(e -> Boolean.TRUE.equals(e.getSeenInCinema())).collect(Collectors.toList()));
 
+        // Capítulos de series vistos en el periodo
+        long capitulosSeries = filtered.stream()
+            .filter(e -> e.getType() != null && e.getType().contains("Serie") && e.getEpisode() != null)
+            .count();
+        stats.put("capitulosSeries", capitulosSeries);
+
+        // Capítulos de libros leídos en el periodo
+        long capitulosLibros = filtered.stream()
+            .filter(e -> e.getType() != null && e.getType().contains("Libro") && e.getChapters() != null)
+            .count();
+        stats.put("capitulosLibros", capitulosLibros);
+
         Map<String, Long> porTipo = new LinkedHashMap<>();
         if (!filterTipo) {
             porTipo.put("Libro",       count(filtered, "Libro"));
