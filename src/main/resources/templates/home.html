@@ -40,6 +40,7 @@
 <main class="main-content">
   <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
   <div class="home-grid">
+    <!-- Últimos registros -->
     <div class="home-panel">
       <h2>🕒 Últimos registros <span class="badge" th:text="${recentEntries.size()}">0</span></h2>
       <div class="home-entry-list" th:if="${not #lists.isEmpty(recentEntries)}">
@@ -51,6 +52,15 @@
             <div class="home-entry-meta">
               <span th:text="${entry.type}"></span>
               <span th:text="'📅 ' + ${entry.date}"></span>
+              <!-- Serie: temporada + capítulo -->
+              <th:block th:if="${entry.type != null and entry.type.contains('Serie')}">
+                <span th:if="${entry.season != null}" th:text="'T' + ${entry.season} + (entry.episode != null ? 'E' + entry.episode : '')"></span>
+              </th:block>
+              <!-- Cómic: tomo + número -->
+              <th:block th:if="${entry.type != null and entry.type.contains('mic')}">
+                <span th:if="${entry.comicVolume != null}" th:text="'Vol.' + ${entry.comicVolume} + (entry.comicIssue != null ? ' #' + entry.comicIssue : '')"></span>
+                <span th:if="${entry.comicVolume == null and entry.comicIssue != null}" th:text="'#' + ${entry.comicIssue}"></span>
+              </th:block>
               <span th:if="${entry.rating != null and entry.rating > 0}" th:text="'⭐ ' + ${entry.rating} + '/10'"></span>
             </div>
           </div>
@@ -64,6 +74,7 @@
       </div>
       <div th:if="${#lists.isEmpty(recentEntries)}" class="empty-msg">Sin registros aún</div>
     </div>
+    <!-- Esta semana -->
     <div class="home-panel">
       <h2>📆 Esta semana <span class="badge" th:text="${weekEntries.size()}">0</span></h2>
       <div class="week-label" th:text="'Del ' + ${weekStart} + ' al ' + ${weekEnd}"></div>
@@ -76,6 +87,15 @@
             <div class="home-entry-meta">
               <span th:text="${entry.type}"></span>
               <span th:text="'📅 ' + ${entry.date}"></span>
+              <!-- Serie: temporada + capítulo -->
+              <th:block th:if="${entry.type != null and entry.type.contains('Serie')}">
+                <span th:if="${entry.season != null}" th:text="'T' + ${entry.season} + (entry.episode != null ? 'E' + entry.episode : '')"></span>
+              </th:block>
+              <!-- Cómic: tomo + número -->
+              <th:block th:if="${entry.type != null and entry.type.contains('mic')}">
+                <span th:if="${entry.comicVolume != null}" th:text="'Vol.' + ${entry.comicVolume} + (entry.comicIssue != null ? ' #' + entry.comicIssue : '')"></span>
+                <span th:if="${entry.comicVolume == null and entry.comicIssue != null}" th:text="'#' + ${entry.comicIssue}"></span>
+              </th:block>
               <span th:if="${entry.rating != null and entry.rating > 0}" th:text="'⭐ ' + ${entry.rating} + '/10'"></span>
             </div>
           </div>

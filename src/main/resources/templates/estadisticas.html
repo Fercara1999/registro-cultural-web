@@ -33,10 +33,11 @@
         <option value="Cómic"    th:selected="${selectedTipo=='Cómic'}">💭 Cómic</option>
       </select>
       <select name="period" onchange="document.getElementById('statsForm').submit()">
-        <option value="semana" th:selected="${period=='semana'}">Esta semana</option>
-        <option value="mes"    th:selected="${period=='mes'}">Este mes</option>
-        <option value="anio"   th:selected="${period=='anio'}">Este año</option>
-        <option value="todo"   th:selected="${period=='todo'}">Todo el tiempo</option>
+        <option value="semana"       th:selected="${period=='semana'}">Esta semana</option>
+        <option value="ultimaSemana" th:selected="${period=='ultimaSemana'}">Última semana</option>
+        <option value="mes"          th:selected="${period=='mes'}">Este mes</option>
+        <option value="anio"         th:selected="${period=='anio'}">Este año</option>
+        <option value="todo"         th:selected="${period=='todo'}">Todo el tiempo</option>
       </select>
     </form>
   </div>
@@ -71,12 +72,8 @@
     <a class="kpi kpi-warn kpi-link" th:href="@{/estadisticas/detalle(period=${period},tipo=${selectedTipo},kpi='librosEnCurso')}">
       <span class="kpi-icon">📖</span><span class="kpi-val" th:text="${librosEnCurso}">0</span><span class="kpi-lbl">En curso</span>
     </a>
-    <div class="kpi kpi-accent">
-      <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span><span class="kpi-lbl">Nota media</span>
-    </div>
-    <div class="kpi kpi-purple">
-      <span class="kpi-icon">✍️</span><span class="kpi-val" th:text="${autoresDistintos}">0</span><span class="kpi-lbl">Autores distintos</span>
-    </div>
+    <div class="kpi kpi-accent"><span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span><span class="kpi-lbl">Nota media</span></div>
+    <div class="kpi kpi-purple"><span class="kpi-icon">✍️</span><span class="kpi-val" th:text="${autoresDistintos}">0</span><span class="kpi-lbl">Autores distintos</span></div>
   </div>
   <div class="kpi-row" th:if="${selectedTipo=='Serie'}">
     <a class="kpi kpi-success kpi-link" th:href="@{/estadisticas/detalle(period=${period},tipo=${selectedTipo},kpi='seriesTerminadas')}">
@@ -85,9 +82,7 @@
     <a class="kpi kpi-warn kpi-link" th:href="@{/estadisticas/detalle(period=${period},tipo=${selectedTipo},kpi='seriesEnCurso')}">
       <span class="kpi-icon">📺</span><span class="kpi-val" th:text="${seriesEnCurso}">0</span><span class="kpi-lbl">En curso</span>
     </a>
-    <div class="kpi kpi-accent">
-      <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span><span class="kpi-lbl">Nota media</span>
-    </div>
+    <div class="kpi kpi-accent"><span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span><span class="kpi-lbl">Nota media</span></div>
   </div>
   <div class="kpi-row" th:if="${selectedTipo=='Película'}">
     <a class="kpi kpi-cinema kpi-link" th:href="@{/estadisticas/detalle(period=${period},tipo=${selectedTipo},kpi='pelisEnCine')}">
@@ -96,17 +91,11 @@
     <a class="kpi kpi-accent kpi-link" th:href="@{/estadisticas/detalle(period=${period},tipo=${selectedTipo},kpi='pelisEnCasa')}">
       <span class="kpi-icon">📺</span><span class="kpi-val" th:text="${pelisEnCasa}">0</span><span class="kpi-lbl">En casa</span>
     </a>
-    <div class="kpi kpi-warn">
-      <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span><span class="kpi-lbl">Nota media</span>
-    </div>
+    <div class="kpi kpi-warn"><span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span><span class="kpi-lbl">Nota media</span></div>
   </div>
   <div class="kpi-row" th:if="${selectedTipo=='Teatro'}">
-    <div class="kpi kpi-accent">
-      <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span><span class="kpi-lbl">Nota media</span>
-    </div>
-    <div class="kpi kpi-purple">
-      <span class="kpi-icon">🎭</span><span class="kpi-val" th:text="${lugaresDistintos}">0</span><span class="kpi-lbl">Lugares distintos</span>
-    </div>
+    <div class="kpi kpi-accent"><span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span><span class="kpi-lbl">Nota media</span></div>
+    <div class="kpi kpi-purple"><span class="kpi-icon">🎭</span><span class="kpi-val" th:text="${lugaresDistintos}">0</span><span class="kpi-lbl">Lugares distintos</span></div>
   </div>
   <div class="kpi-row" th:if="${selectedTipo=='Cómic'}">
     <a class="kpi kpi-success kpi-link" th:href="@{/estadisticas/detalle(period=${period},tipo=${selectedTipo},kpi='comicsTerminados')}">
@@ -115,9 +104,7 @@
     <a class="kpi kpi-warn kpi-link" th:href="@{/estadisticas/detalle(period=${period},tipo=${selectedTipo},kpi='comicsEnCurso')}">
       <span class="kpi-icon">💭</span><span class="kpi-val" th:text="${comicsEnCurso}">0</span><span class="kpi-lbl">En curso</span>
     </a>
-    <div class="kpi kpi-accent">
-      <span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span><span class="kpi-lbl">Nota media</span>
-    </div>
+    <div class="kpi kpi-accent"><span class="kpi-icon">⭐</span><span class="kpi-val" th:text="${avgRating}">-</span><span class="kpi-lbl">Nota media</span></div>
   </div>
 
   <!-- Top autores / lugares -->
@@ -140,19 +127,19 @@
     <div class="chart-card"><h3>Distribución</h3><canvas id="pieChart" width="260"></canvas></div>
   </div>
 
-  <!-- Gráfico temporal: NO se muestra en semana -->
-  <div class="chart-card full-width" th:if="${period != 'semana'}">
+  <!-- Gráfico temporal: NO se muestra en semana ni ultimaSemana (no tiene sentido agrupar sobre 7 días fijos) -->
+  <div class="chart-card full-width" th:if="${period != 'semana' and period != 'ultimaSemana'}">
     <h3 th:text="${periodLabel}">Actividad</h3>
     <canvas id="lineChart"></canvas>
   </div>
 
-  <!-- Gráfico por día de la semana: NO se muestra en semana -->
-  <div class="chart-card full-width" th:if="${period != 'semana'}">
+  <!-- Gráfico por día de la semana: NO se muestra en semana ni ultimaSemana -->
+  <div class="chart-card full-width" th:if="${period != 'semana' and period != 'ultimaSemana'}">
     <h3>Por día de la semana</h3>
     <canvas id="dayChart"></canvas>
   </div>
 
-  <!-- Lista cine solo en Película o Todos -->
+  <!-- Lista cine -->
   <div th:if="${(selectedTipo=='Todos' or selectedTipo=='Película') and cinemaList != null and !cinemaList.isEmpty()}">
     <div class="section-title">🎫 Películas vistas en el cine</div>
     <div class="chart-card full-width">

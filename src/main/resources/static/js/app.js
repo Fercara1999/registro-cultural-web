@@ -1,10 +1,10 @@
-// ── TEMA ────────────────────────────────────────────────────────
+// ── TEMA ──────────────────────────────────────────────────────
 function toggleTheme() {
   const body = document.body;
   const isDark = body.getAttribute('data-theme') === 'dark';
   body.setAttribute('data-theme', isDark ? '' : 'dark');
   const btn = document.querySelector('.theme-btn');
-  if (btn) btn.textContent = isDark ? '🌙' : '☀️';
+  if (btn) btn.textContent = isDark ? '\uD83C\uDF19' : '\u2600\uFE0F';
   localStorage.setItem('theme', isDark ? 'light' : 'dark');
 }
 (function () {
@@ -12,11 +12,11 @@ function toggleTheme() {
   if (saved === 'dark') {
     document.body.setAttribute('data-theme', 'dark');
     const btn = document.querySelector('.theme-btn');
-    if (btn) btn.textContent = '☀️';
+    if (btn) btn.textContent = '\u2600\uFE0F';
   }
 })();
 
-// ── ESTRELLAS ───────────────────────────────────────────────
+// ── ESTRELLAS ──────────────────────────────────────────────
 function initStars(initial) {
   const row   = document.getElementById('starRow');
   const input = document.getElementById('ratingInput');
@@ -27,7 +27,7 @@ function initStars(initial) {
   for (let i = 1; i <= 10; i++) {
     const s = document.createElement('span');
     s.className = 'star-widget' + (i <= current ? ' on' : '');
-    s.textContent = i <= current ? '★' : '☆';
+    s.textContent = i <= current ? '\u2605' : '\u2606';
     s.dataset.v = i;
     s.addEventListener('mouseenter', () => { highlight(i); if (label) label.textContent = i; });
     s.addEventListener('mouseleave', () => { highlight(current); if (label) label.textContent = current; });
@@ -38,7 +38,7 @@ function initStars(initial) {
     [...row.querySelectorAll('.star-widget')].forEach((el, idx) => {
       const on = idx < n;
       el.className = 'star-widget' + (on ? ' on' : '');
-      el.textContent = on ? '★' : '☆';
+      el.textContent = on ? '\u2605' : '\u2606';
     });
   }
 }
@@ -82,7 +82,7 @@ function _hideDropZone() {
   if (wrap) wrap.style.display = 'none';
 }
 
-// ── COVER DROP ZONE ──────────────────────────────────────────
+// ── COVER DROP ZONE ────────────────────────────────────────────
 function initCoverDropZone() {
   const zone = document.getElementById('coverDropZone');
   if (!zone) return;
@@ -165,10 +165,8 @@ function _clearExistingCoverPath() {
   if (el) el.value = '';
 }
 
-// ── PORTADA AUTOMÁTICA ─────────────────────────────────────────
+// ── PORTADA AUTOMÁTICA ─────────────────────────────────────────────
 let coverDebounce = null;
-
-// Autor pendiente de aplicar cuando el campo exista en el DOM
 let _pendingAuthor = '';
 
 function fetchAutoCover() {
@@ -181,6 +179,7 @@ function _doFetchCover() {
   if (existingPath && existingPath.value.trim()) return;
 
   const titleEl = document.querySelector('input[name="title"]');
+  // Soporta tanto registrar (typeSelect) como pendientes (typeSelectPending)
   const typeEl  = document.getElementById('typeSelect') || document.getElementById('typeSelectPending');
   if (!titleEl || !typeEl) return;
   const title = titleEl.value.trim();
@@ -205,13 +204,11 @@ function _doFetchCover() {
 
       if (data.url) _showCoverPreview(data.url); else _hideCoverPreview();
 
-      // Autorellenar director (películas)
       if (data.director && data.director.trim()) {
         const dirEl = document.querySelector('input[name="director"]');
         if (dirEl && !dirEl.value.trim()) dirEl.value = data.director;
       }
 
-      // Autorellenar autor (libros)
       if (data.author && data.author.trim()) {
         const authEl = document.querySelector('input[name="author"]');
         if (authEl) {
@@ -246,8 +243,14 @@ function _showCoverPreview(url) {
                   style="margin-top:8px;font-size:0.78rem;background:transparent;border:1px solid var(--muted);border-radius:6px;padding:2px 10px;color:var(--muted);cursor:pointer;">✖ No usar esta portada</button>
         </div>
       </div>`;
+    // Intentar insertar antes de coverDropZone; si no existe, al final del formulario
     const dropZone = document.getElementById('coverDropZone');
-    if (dropZone) dropZone.parentNode.insertBefore(box, dropZone);
+    if (dropZone) {
+      dropZone.parentNode.insertBefore(box, dropZone);
+    } else {
+      const form = document.querySelector('form');
+      if (form) form.appendChild(box);
+    }
   }
   document.getElementById('autoCoverImg').src = url;
   box.style.display = 'block';
@@ -303,7 +306,7 @@ function _clearExistingCover() {
   fetchAutoCover();
 }
 
-// ── HINT ───────────────────────────────────────────────────
+// ── HINT ─────────────────────────────────────────────────
 let hintDebounce = null;
 
 function fetchEntryHint() {
@@ -347,7 +350,6 @@ function _doFetchHint() {
         const chapEl = document.getElementById('chaptersInput');
         const authEl = document.querySelector('input[name="author"]');
         if (chapEl && data.chapters != null && !chapEl.value.trim()) chapEl.value = data.chapters;
-        // Si el campo autor existe, rellenarlo; si no, guardar en _pendingAuthor para cuando se renderice
         if (data.author && data.author.trim()) {
           if (authEl) {
             if (!authEl.value.trim()) authEl.value = data.author;
@@ -365,7 +367,39 @@ function _doFetchHint() {
     .catch(() => {});
 }
 
-// ── CAMPOS DINÁMICOS (REGISTRAR) ─────────────────────────────────
+// ── HINT PENDIENTES (Serie/Libro: busca portada existente en BD) ───────────
+function fetchPendingHint() {
+  clearTimeout(hintDebounce);
+  hintDebounce = setTimeout(_doFetchPendingHint, 500);
+}
+
+function _doFetchPendingHint() {
+  const titleEl = document.querySelector('input[name="title"]');
+  const typeEl  = document.getElementById('typeSelectPending');
+  if (!titleEl || !typeEl) return;
+  const title = titleEl.value.trim();
+  const type  = typeEl.value;
+  if (title.length < 2) return;
+  if (!type.includes('Serie') && !type.includes('Libro') && !type.includes('mic')) {
+    fetchAutoCover();
+    return;
+  }
+  const params = new URLSearchParams({ title, type });
+  fetch('/api/entry/hint?' + params)
+    .then(r => r.json())
+    .then(data => {
+      if (data.coverLocalPath) {
+        _showExistingCoverHint(data.coverLocalPath);
+      } else {
+        _hideExistingCoverHint();
+        _showDropZone();
+        fetchAutoCover();
+      }
+    })
+    .catch(() => {});
+}
+
+// ── CAMPOS DINÁMICOS (REGISTRAR) ───────────────────────────────────
 function updateDynamicFields(prefill) {
   const sel = document.getElementById('typeSelect');
   const box = document.getElementById('dynamicFields');
@@ -446,7 +480,6 @@ function updateDynamicFields(prefill) {
   else       { box.style.display = 'none'; box.innerHTML = ''; }
   syncStarsVisibility();
 
-  // Si hay un autor pendiente de aplicar (llegó de la API antes de que existiera el campo), aplicarlo ahora
   if (type.includes('Libro') && _pendingAuthor) {
     const authEl = document.querySelector('input[name="author"]');
     if (authEl && !authEl.value.trim()) authEl.value = _pendingAuthor;
@@ -523,42 +556,71 @@ function updateDynamicFieldsPending() {
   const type = sel.value || '';
   const fs = 'style="width:100%;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--input);color:var(--text);font-size:.92rem"';
   let html = '';
-  if (type.includes('Libro'))       html = `<div class="form-row"><div class="form-group flex-grow"><label>✍️ Autor</label><input type="text" name="author" ${fs} oninput="fetchAutoCover()"/></div></div>`;
-  else if (type.includes('Serie'))  html = `<div class="form-row"><div class="form-group flex-grow"><label>📺 Título exacto</label><input type="text" name="seriesHint" ${fs} oninput="fetchAutoCover()"/></div></div>`;
-  else if (type.includes('Pel'))    html = `<div class="form-row"><div class="form-group flex-grow"><label>🎬 Director(es) <small style="color:var(--muted);font-weight:400">(varios separados por coma)</small></label><input type="text" name="director" ${fs} placeholder="Ej: Spielberg, Kubrick" oninput="fetchAutoCover()"/></div></div>`;
-  else if (type.includes('Teatro')) html = `<div class="form-row"><div class="form-group flex-grow"><label>🎤 Lugar</label><input type="text" name="venue" ${fs}/></div></div>`;
+  if (type.includes('Libro')) {
+    html = `<div class="form-row"><div class="form-group flex-grow"><label>✍️ Autor</label>
+      <input type="text" name="author" ${fs} oninput="fetchAutoCover()"/></div></div>`;
+  } else if (type.includes('Serie')) {
+    // Igual que en registrar: buscamos portada existente por título (hint)
+    html = '';
+  } else if (type.includes('Pel')) {
+    html = `<div class="form-row"><div class="form-group flex-grow"><label>🎬 Director(es) <small style="color:var(--muted);font-weight:400">(varios separados por coma)</small></label>
+      <input type="text" name="director" ${fs} placeholder="Ej: Spielberg, Kubrick" oninput="fetchAutoCover()"/></div></div>`;
+  } else if (type.includes('Teatro')) {
+    html = `<div class="form-row"><div class="form-group flex-grow"><label>🎤 Lugar</label>
+      <input type="text" name="venue" ${fs}/></div></div>`;
+  }
   box.innerHTML = html;
+
+  // Lanzar búsqueda de portada adaptada al tipo
+  const titleEl = document.querySelector('input[name="title"]');
+  if (titleEl && titleEl.value.trim().length >= 2) {
+    if (type.includes('Serie') || type.includes('Libro') || type.includes('mic')) {
+      fetchPendingHint();
+    } else {
+      fetchAutoCover();
+    }
+  }
 }
 
-// ── DOMContentLoaded ──────────────────────────────────────────
+// ── DOMContentLoaded ───────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   updateDynamicFields();
   updateDynamicFieldsPending();
   const dateIn = document.getElementById('dateInput');
   if (dateIn && !dateIn.value) dateIn.value = new Date().toISOString().split('T')[0];
+
+  // Listeners registrar
   const titleEl = document.querySelector('input[name="title"]');
   if (titleEl) titleEl.addEventListener('input', () => {
     const type = document.getElementById('typeSelect')?.value || '';
+    const typeP = document.getElementById('typeSelectPending')?.value || '';
     const usesHint = type.includes('Serie') || type.includes('Libro') || type.includes('mic');
-    if (usesHint) {
-      fetchEntryHint();
-    } else {
-      fetchAutoCover();
-      fetchEntryHint();
+    const usesHintP = typeP.includes('Serie') || typeP.includes('Libro') || typeP.includes('mic');
+    if (document.getElementById('typeSelect')) {
+      if (usesHint) fetchEntryHint(); else { fetchAutoCover(); fetchEntryHint(); }
+    }
+    if (document.getElementById('typeSelectPending')) {
+      if (usesHintP) fetchPendingHint(); else fetchAutoCover();
     }
   });
+
   const typeEl = document.getElementById('typeSelect');
   if (typeEl) typeEl.addEventListener('change', () => {
     _hideCoverPreview(); _hideExistingCoverHint(); _showDropZone();
     _pendingAuthor = '';
     setTimeout(() => updateDynamicFields(), 50);
   });
+
   const typeElP = document.getElementById('typeSelectPending');
-  if (typeElP) typeElP.addEventListener('change', () => { _hideCoverPreview(); setTimeout(fetchAutoCover, 300); });
+  if (typeElP) typeElP.addEventListener('change', () => {
+    _hideCoverPreview(); _hideExistingCoverHint(); _showDropZone();
+    setTimeout(() => updateDynamicFieldsPending(), 50);
+  });
+
   initCoverDropZone();
 });
 
-// ── EDIT FORM ───────────────────────────────────────────────────
+// ── EDIT FORM ────────────────────────────────────────────────────
 function initEditForm() {
   const box = document.getElementById('dynamicFields');
   if (!box) return;

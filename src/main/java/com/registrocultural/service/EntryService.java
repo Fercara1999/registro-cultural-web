@@ -167,7 +167,7 @@ public class EntryService {
         }
     }
 
-    // ── STATS ──────────────────────────────────────────────────
+    // ── STATS ────────────────────────────────────────────────
 
     public Map<String, Object> getStats(String period, String tipo) {
         List<Entry> all = getAllNonPending();
@@ -212,14 +212,18 @@ public class EntryService {
         // Gráfico temporal adaptado al periodo
         Map<String, Long> porPeriodo;
         String periodLabel;
-        if ("semana".equals(p)) {
-            periodLabel = "Evolución diaria";
-            LocalDate monday = now.minusDays(now.getDayOfWeek().getValue() - 1);
+        if ("semana".equals(p) || "ultimaSemana".equals(p)) {
+            periodLabel = "semana".equals(p) ? "Evolución diaria" : "Evolución diaria (\u00faltima semana)";
+            // Para "semana" usamos lunes-domingo de la semana actual
+            // Para "ultimaSemana" usamos los 7 días anteriores (ayer incluido)
+            LocalDate refDay = "ultimaSemana".equals(p) ? now.minusDays(6) : now.minusDays(now.getDayOfWeek().getValue() - 1);
             porPeriodo = new LinkedHashMap<>();
             String[] dayNames = {"Lun","Mar","Mi\u00e9","Jue","Vie","S\u00e1b","Dom"};
             for (int i = 0; i < 7; i++) {
-                LocalDate d = monday.plusDays(i);
-                String lbl = dayNames[i];
+                LocalDate d = refDay.plusDays(i);
+                String lbl = "ultimaSemana".equals(p)
+                    ? d.getDayOfMonth() + "/" + d.getMonthValue()
+                    : dayNames[i];
                 final LocalDate fd = d;
                 long cnt = filtered.stream().filter(e -> e.getDate().equals(fd)).count();
                 porPeriodo.put(lbl, cnt);
@@ -286,12 +290,6 @@ public class EntryService {
         return stats;
     }
 
-    /**
-     * Devuelve los registros que corresponden a una KPI card concreta.
-     * kpi: "total" | "capitulosSeries" | "capitulosLibros" | "peliculas" | "comics" | "cine" | "teatro"
-     *      | "librosTerminados" | "librosEnCurso" | "seriesTerminadas" | "seriesEnCurso"
-     *      | "pelisEnCine" | "pelisEnCasa" | "comicsTerminados" | "comicsEnCurso"
-     */
     public List<Entry> getDetalleRegistros(String period, String tipo, String kpi) {
         List<Entry> all = getAllNonPending();
         LocalDate now  = LocalDate.now();
@@ -304,10 +302,8 @@ public class EntryService {
 
         boolean filterTipo = tipo != null && !"Todos".equals(tipo);
 
-        // Base: registros del periodo (filtrados por tipo si procede)
         List<Entry> base;
         if ("cine".equals(kpi)) {
-            // cine: solo películas en cine del periodo, sin importar tipo selector
             base = byPeriod.stream()
                 .filter(e -> Boolean.TRUE.equals(e.getSeenInCinema()))
                 .collect(Collectors.toList());
@@ -319,59 +315,33 @@ public class EntryService {
             base = byPeriod;
         }
 
-        // Filtro adicional según la KPI
         return switch (kpi) {
             case "total"            -> base;
-            case "capitulosSeries"  -> base.stream()
-                .filter(e -> e.getType() != null && e.getType().contains("Serie") && e.getEpisode() != null)
-                .collect(Collectors.toList());
-            case "capitulosLibros"  -> base.stream()
-                .filter(e -> e.getType() != null && e.getType().contains("Libro") && e.getChapters() != null)
-                .collect(Collectors.toList());
-            case "peliculas"        -> base.stream()
-                .filter(e -> e.getType() != null && e.getType().contains("Pel"))
-                .collect(Collectors.toList());
-            case "comics"           -> base.stream()
-                .filter(e -> e.getType() != null && e.getType().contains("mic"))
-                .collect(Collectors.toList());
-            case "teatro"           -> base.stream()
-                .filter(e -> e.getType() != null && e.getType().contains("Teatro"))
-                .collect(Collectors.toList());
-            case "cine"             -> base; // ya filtrado arriba
-            case "librosTerminados" -> base.stream()
-                .filter(e -> Boolean.TRUE.equals(e.getFinished()))
-                .collect(Collectors.toList());
-            case "librosEnCurso"    -> base.stream()
-                .filter(e -> !Boolean.TRUE.equals(e.getFinished()))
-                .collect(Collectors.toList());
-            case "seriesTerminadas" -> base.stream()
-                .filter(e -> Boolean.TRUE.equals(e.getSeriesFinished()))
-                .collect(Collectors.toList());
-            case "seriesEnCurso"    -> base.stream()
-                .filter(e -> !Boolean.TRUE.equals(e.getSeriesFinished()))
-                .collect(Collectors.toList());
-            case "pelisEnCine"      -> base.stream()
-                .filter(e -> Boolean.TRUE.equals(e.getSeenInCinema()))
-                .collect(Collectors.toList());
-            case "pelisEnCasa"      -> base.stream()
-                .filter(e -> !Boolean.TRUE.equals(e.getSeenInCinema()))
-                .collect(Collectors.toList());
-            case "comicsTerminados" -> base.stream()
-                .filter(e -> Boolean.TRUE.equals(e.getFinished()))
-                .collect(Collectors.toList());
-            case "comicsEnCurso"    -> base.stream()
-                .filter(e -> !Boolean.TRUE.equals(e.getFinished()))
-                .collect(Collectors.toList());
+            case "capitulosSeries"  -> base.stream().filter(e -> e.getType() != null && e.getType().contains("Serie") && e.getEpisode() != null).collect(Collectors.toList());
+            case "capitulosLibros"  -> base.stream().filter(e -> e.getType() != null && e.getType().contains("Libro") && e.getChapters() != null).collect(Collectors.toList());
+            case "peliculas"        -> base.stream().filter(e -> e.getType() != null && e.getType().contains("Pel")).collect(Collectors.toList());
+            case "comics"           -> base.stream().filter(e -> e.getType() != null && e.getType().contains("mic")).collect(Collectors.toList());
+            case "teatro"           -> base.stream().filter(e -> e.getType() != null && e.getType().contains("Teatro")).collect(Collectors.toList());
+            case "cine"             -> base;
+            case "librosTerminados" -> base.stream().filter(e -> Boolean.TRUE.equals(e.getFinished())).collect(Collectors.toList());
+            case "librosEnCurso"    -> base.stream().filter(e -> !Boolean.TRUE.equals(e.getFinished())).collect(Collectors.toList());
+            case "seriesTerminadas" -> base.stream().filter(e -> Boolean.TRUE.equals(e.getSeriesFinished())).collect(Collectors.toList());
+            case "seriesEnCurso"    -> base.stream().filter(e -> !Boolean.TRUE.equals(e.getSeriesFinished())).collect(Collectors.toList());
+            case "pelisEnCine"      -> base.stream().filter(e -> Boolean.TRUE.equals(e.getSeenInCinema())).collect(Collectors.toList());
+            case "pelisEnCasa"      -> base.stream().filter(e -> !Boolean.TRUE.equals(e.getSeenInCinema())).collect(Collectors.toList());
+            case "comicsTerminados" -> base.stream().filter(e -> Boolean.TRUE.equals(e.getFinished())).collect(Collectors.toList());
+            case "comicsEnCurso"    -> base.stream().filter(e -> !Boolean.TRUE.equals(e.getFinished())).collect(Collectors.toList());
             default                 -> base;
         };
     }
 
     private LocalDate periodFrom(String p, LocalDate now) {
         return switch (p) {
-            case "semana" -> now.minusDays(now.getDayOfWeek().getValue() - 1);
-            case "anio"   -> now.withDayOfYear(1);
-            case "todo"   -> LocalDate.of(2000, 1, 1);
-            default       -> now.withDayOfMonth(1);
+            case "semana"       -> now.minusDays(now.getDayOfWeek().getValue() - 1);
+            case "ultimaSemana" -> now.minusDays(6);
+            case "anio"         -> now.withDayOfYear(1);
+            case "todo"         -> LocalDate.of(2000, 1, 1);
+            default             -> now.withDayOfMonth(1);
         };
     }
 
