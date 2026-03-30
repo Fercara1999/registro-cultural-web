@@ -52,13 +52,15 @@
             <div class="home-entry-meta">
               <span th:text="${entry.type}"></span>
               <span th:text="'📅 ' + ${entry.date}"></span>
-              <!-- Serie: temporada + capítulo -->
-              <th:block th:if="${entry.type != null and entry.type.contains('Serie')}">
-                <span th:if="${entry.season != null}" th:text="'T' + ${entry.season} + (entry.episode != null ? 'E' + entry.episode : '')"></span>
+              <!-- Serie: temporada + capítulo (dos spans separados para evitar bug ternario en Thymeleaf) -->
+              <th:block th:if="${entry.type != null and entry.type.contains('Serie') and entry.season != null}">
+                <span th:if="${entry.episode != null}" th:text="'T' + ${entry.season} + 'E' + ${entry.episode}"></span>
+                <span th:unless="${entry.episode != null}" th:text="'T' + ${entry.season}"></span>
               </th:block>
               <!-- Cómic: tomo + número -->
               <th:block th:if="${entry.type != null and entry.type.contains('mic')}">
-                <span th:if="${entry.comicVolume != null}" th:text="'Vol.' + ${entry.comicVolume} + (entry.comicIssue != null ? ' #' + entry.comicIssue : '')"></span>
+                <span th:if="${entry.comicVolume != null and entry.comicIssue != null}" th:text="'Vol.' + ${entry.comicVolume} + ' #' + ${entry.comicIssue}"></span>
+                <span th:if="${entry.comicVolume != null and entry.comicIssue == null}" th:text="'Vol.' + ${entry.comicVolume}"></span>
                 <span th:if="${entry.comicVolume == null and entry.comicIssue != null}" th:text="'#' + ${entry.comicIssue}"></span>
               </th:block>
               <span th:if="${entry.rating != null and entry.rating > 0}" th:text="'⭐ ' + ${entry.rating} + '/10'"></span>
@@ -88,12 +90,14 @@
               <span th:text="${entry.type}"></span>
               <span th:text="'📅 ' + ${entry.date}"></span>
               <!-- Serie: temporada + capítulo -->
-              <th:block th:if="${entry.type != null and entry.type.contains('Serie')}">
-                <span th:if="${entry.season != null}" th:text="'T' + ${entry.season} + (entry.episode != null ? 'E' + entry.episode : '')"></span>
+              <th:block th:if="${entry.type != null and entry.type.contains('Serie') and entry.season != null}">
+                <span th:if="${entry.episode != null}" th:text="'T' + ${entry.season} + 'E' + ${entry.episode}"></span>
+                <span th:unless="${entry.episode != null}" th:text="'T' + ${entry.season}"></span>
               </th:block>
               <!-- Cómic: tomo + número -->
               <th:block th:if="${entry.type != null and entry.type.contains('mic')}">
-                <span th:if="${entry.comicVolume != null}" th:text="'Vol.' + ${entry.comicVolume} + (entry.comicIssue != null ? ' #' + entry.comicIssue : '')"></span>
+                <span th:if="${entry.comicVolume != null and entry.comicIssue != null}" th:text="'Vol.' + ${entry.comicVolume} + ' #' + ${entry.comicIssue}"></span>
+                <span th:if="${entry.comicVolume != null and entry.comicIssue == null}" th:text="'Vol.' + ${entry.comicVolume}"></span>
                 <span th:if="${entry.comicVolume == null and entry.comicIssue != null}" th:text="'#' + ${entry.comicIssue}"></span>
               </th:block>
               <span th:if="${entry.rating != null and entry.rating > 0}" th:text="'⭐ ' + ${entry.rating} + '/10'"></span>
