@@ -27,7 +27,6 @@ public class EntryController {
     private final EntryService service;
     private static final DateTimeFormatter LABEL_FMT = DateTimeFormatter.ofPattern("dd/MM");
 
-    // Etiquetas legibles para cada KPI
     private static final Map<String, String> KPI_LABELS = Map.ofEntries(
         Map.entry("total",            "Todos los registros"),
         Map.entry("capitulosSeries",  "Cap\u00edtulos de series"),
@@ -47,10 +46,12 @@ public class EntryController {
     );
 
     private static final Map<String, String> PERIOD_LABELS = Map.of(
-        "semana", "esta semana",
-        "mes",    "este mes",
-        "anio",   "este a\u00f1o",
-        "todo",   "todo el tiempo"
+        "semana",       "esta semana",
+        "ultimaSemana", "la \u00faltima semana",
+        "mes",          "este mes",
+        "ultimoMes",    "el \u00faltimo mes",
+        "anio",         "este a\u00f1o",
+        "todo",         "todo el tiempo"
     );
 
     public EntryController(EntryService service) { this.service = service; }
@@ -329,7 +330,7 @@ public class EntryController {
         String titulo = KPI_LABELS.getOrDefault(kpi, kpi);
         String periodoLabel = PERIOD_LABELS.getOrDefault(period, period);
         model.addAttribute("entries",      entries);
-        model.addAttribute("detalleTitle", titulo + " — " + periodoLabel);
+        model.addAttribute("detalleTitle", titulo + " \u2014 " + periodoLabel);
         model.addAttribute("period",       period);
         model.addAttribute("tipo",         tipo);
         model.addAttribute("kpi",          kpi);
@@ -438,22 +439,41 @@ public class EntryController {
                 .ifPresent(last -> result.put("chapters", last.getChapters() + 1));
 
         } else if (type.contains("mic")) {
-            List<Entry> entries = service.getAll().stream()
+            List<Entry> comicEntries = service.getAll().stream()
                 .filter(e -> !e.isPending())
                 .filter(e -> e.getType() != null && e.getType().contains("mic"))
                 .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
                 .collect(Collectors.toList());
-            entries.stream()
+
+            // Tomo con mayor número de volumen registrado
+            Optional<Entry> lastVolOpt = comicEntries.stream()
                 .filter(e -> e.getComicVolume() != null)
-                .max(Comparator.comparingInt(Entry::getComicVolume))
-                .ifPresent(last -> {
-                    boolean tomoTerminado = Boolean.TRUE.equals(last.getFinished());
-                    result.put("comicVolume", tomoTerminado ? last.getComicVolume() + 1 : last.getComicVolume());
-                });
-            entries.stream()
-                .filter(e -> e.getComicIssue() != null)
-                .max(Comparator.comparingInt(Entry::getComicIssue))
-                .ifPresent(last -> result.put("comicIssue", last.getComicIssue() + 1));
+                .max(Comparator.comparingInt(Entry::getComicVolume));
+
+            if (lastVolOpt.isPresent()) {
+                Entry lastVol = lastVolOpt.get();
+                boolean tomoTerminado = Boolean.TRUE.equals(lastVol.getFinished());
+                int nextVolume = tomoTerminado ? lastVol.getComicVolume() + 1 : lastVol.getComicVolume();
+                result.put("comicVolume", nextVolume);
+
+                if (tomoTerminado) {
+                    // Tomo nuevo: el número de serie empieza en 1
+                    result.put("comicIssue", 1);
+                } else {
+                    // Mismo tomo: siguiente número dentro del tomo actual
+                    comicEntries.stream()
+                        .filter(e -> e.getComicVolume() != null && e.getComicVolume().equals(lastVol.getComicVolume()))
+                        .filter(e -> e.getComicIssue() != null)
+                        .max(Comparator.comparingInt(Entry::getComicIssue))
+                        .ifPresent(lastIssue -> result.put("comicIssue", lastIssue.getComicIssue() + 1));
+                }
+            } else {
+                // Sin tomos previos: buscar solo por número de serie global
+                comicEntries.stream()
+                    .filter(e -> e.getComicIssue() != null)
+                    .max(Comparator.comparingInt(Entry::getComicIssue))
+                    .ifPresent(last -> result.put("comicIssue", last.getComicIssue() + 1));
+            }
         }
 
         return ResponseEntity.ok(result);

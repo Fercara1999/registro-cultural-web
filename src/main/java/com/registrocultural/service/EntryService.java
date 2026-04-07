@@ -214,8 +214,6 @@ public class EntryService {
         String periodLabel;
         if ("semana".equals(p) || "ultimaSemana".equals(p)) {
             periodLabel = "semana".equals(p) ? "Evolución diaria" : "Evolución diaria (\u00faltima semana)";
-            // Para "semana" usamos lunes-domingo de la semana actual
-            // Para "ultimaSemana" usamos los 7 días anteriores (ayer incluido)
             LocalDate refDay = "ultimaSemana".equals(p) ? now.minusDays(6) : now.minusDays(now.getDayOfWeek().getValue() - 1);
             porPeriodo = new LinkedHashMap<>();
             String[] dayNames = {"Lun","Mar","Mi\u00e9","Jue","Vie","S\u00e1b","Dom"};
@@ -228,20 +226,37 @@ public class EntryService {
                 long cnt = filtered.stream().filter(e -> e.getDate().equals(fd)).count();
                 porPeriodo.put(lbl, cnt);
             }
-        } else if ("mes".equals(p)) {
-            periodLabel = "Evolución semanal";
+        } else if ("mes".equals(p) || "ultimoMes".equals(p)) {
+            periodLabel = "ultimoMes".equals(p) ? "Evolución semanal (\u00faltimo mes)" : "Evolución semanal";
             porPeriodo = new LinkedHashMap<>();
-            for (Entry e : filtered) {
-                int dom = e.getDate().getDayOfMonth();
-                String semLbl = "S" + ((dom - 1) / 7 + 1);
-                porPeriodo.merge(semLbl, 1L, Long::sum);
+            // Para ultimoMes agrupamos por semana con etiqueta dd/MM
+            if ("ultimoMes".equals(p)) {
+                LocalDate refStart = from;
+                for (int w = 0; w < 5; w++) {
+                    LocalDate wStart = refStart.plusDays(w * 7L);
+                    LocalDate wEnd   = wStart.plusDays(6);
+                    if (wStart.isAfter(now)) break;
+                    String lbl = wStart.getDayOfMonth() + "/" + wStart.getMonthValue();
+                    final LocalDate fwStart = wStart;
+                    final LocalDate fwEnd   = wEnd.isAfter(now) ? now : wEnd;
+                    long cnt = filtered.stream()
+                        .filter(e -> !e.getDate().isBefore(fwStart) && !e.getDate().isAfter(fwEnd))
+                        .count();
+                    porPeriodo.put(lbl, cnt);
+                }
+            } else {
+                for (Entry e : filtered) {
+                    int dom = e.getDate().getDayOfMonth();
+                    String semLbl = "S" + ((dom - 1) / 7 + 1);
+                    porPeriodo.merge(semLbl, 1L, Long::sum);
+                }
+                Map<String, Long> ordered = new LinkedHashMap<>();
+                for (String s : new String[]{"S1","S2","S3","S4","S5"}) {
+                    long v = porPeriodo.getOrDefault(s, 0L);
+                    if (v > 0 || !"S5".equals(s)) ordered.put(s, v);
+                }
+                porPeriodo = ordered;
             }
-            Map<String, Long> ordered = new LinkedHashMap<>();
-            for (String s : new String[]{"S1","S2","S3","S4","S5"}) {
-                long v = porPeriodo.getOrDefault(s, 0L);
-                if (v > 0 || !"S5".equals(s)) ordered.put(s, v);
-            }
-            porPeriodo = ordered;
         } else if ("anio".equals(p)) {
             periodLabel = "Actividad mensual";
             porPeriodo = new TreeMap<>(filtered.stream().collect(
@@ -339,9 +354,10 @@ public class EntryService {
         return switch (p) {
             case "semana"       -> now.minusDays(now.getDayOfWeek().getValue() - 1);
             case "ultimaSemana" -> now.minusDays(6);
+            case "ultimoMes"    -> now.minusDays(29);
             case "anio"         -> now.withDayOfYear(1);
             case "todo"         -> LocalDate.of(2000, 1, 1);
-            default             -> now.withDayOfMonth(1);
+            default             -> now.withDayOfMonth(1);  // "mes"
         };
     }
 

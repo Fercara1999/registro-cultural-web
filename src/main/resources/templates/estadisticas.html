@@ -36,13 +36,14 @@
         <option value="semana"       th:selected="${period=='semana'}">Esta semana</option>
         <option value="ultimaSemana" th:selected="${period=='ultimaSemana'}">Última semana</option>
         <option value="mes"          th:selected="${period=='mes'}">Este mes</option>
+        <option value="ultimoMes"    th:selected="${period=='ultimoMes'}">Último mes</option>
         <option value="anio"         th:selected="${period=='anio'}">Este año</option>
         <option value="todo"         th:selected="${period=='todo'}">Todo el tiempo</option>
       </select>
     </form>
   </div>
 
-  <!-- KPIs principales como links -->
+  <!-- KPIs principales -->
   <div class="kpi-row">
     <a class="kpi kpi-accent kpi-link" th:href="@{/estadisticas/detalle(period=${period},tipo=${selectedTipo},kpi='total')}">
       <span class="kpi-icon">📚</span><span class="kpi-val" th:text="${total}">0</span><span class="kpi-lbl">En periodo</span>
@@ -127,13 +128,13 @@
     <div class="chart-card"><h3>Distribución</h3><canvas id="pieChart" width="260"></canvas></div>
   </div>
 
-  <!-- Gráfico temporal: NO se muestra en semana ni ultimaSemana (no tiene sentido agrupar sobre 7 días fijos) -->
+  <!-- Gráfico temporal -->
   <div class="chart-card full-width" th:if="${period != 'semana' and period != 'ultimaSemana'}">
     <h3 th:text="${periodLabel}">Actividad</h3>
     <canvas id="lineChart"></canvas>
   </div>
 
-  <!-- Gráfico por día de la semana: NO se muestra en semana ni ultimaSemana -->
+  <!-- Gráfico por día de la semana -->
   <div class="chart-card full-width" th:if="${period != 'semana' and period != 'ultimaSemana'}">
     <h3>Por día de la semana</h3>
     <canvas id="dayChart"></canvas>
