@@ -1,16 +1,15 @@
 package com.registrocultural.repository;
 
 import com.registrocultural.model.Entry;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
 
 @Repository
-public interface EntryRepository extends JpaRepository<Entry, Integer> {
+public interface EntryRepository extends MongoRepository<Entry, String> {
 
     List<Entry> findAllByOrderByDateDescIdDesc();
 
@@ -20,21 +19,21 @@ public interface EntryRepository extends JpaRepository<Entry, Integer> {
 
     List<Entry> findByDateOrderByDateDesc(LocalDate date);
 
-    @Query("SELECT e FROM Entry e WHERE LOWER(e.title) LIKE LOWER(CONCAT('%',:title,'%')) AND e.type LIKE CONCAT('%',:type,'%') ORDER BY e.date DESC")
-    List<Entry> findByTitleAndType(@Param("title") String title, @Param("type") String type);
+    @Query("{ 'title': { $regex: ?0, $options: 'i' }, 'type': { $regex: ?1 } }")
+    List<Entry> findByTitleAndType(String title, String type);
 
-    @Query("SELECT DISTINCT e.title FROM Entry e WHERE e.type LIKE CONCAT('%',:type,'%') ORDER BY e.title ASC")
-    List<String> findDistinctTitlesByType(@Param("type") String type);
+    @Query(value = "{ 'type': { $regex: ?0 } }", fields = "{ 'title': 1 }")
+    List<Entry> findDistinctTitlesByType(String type);
 
-    @Query("SELECT e FROM Entry e WHERE e.type LIKE '%Libro%' AND LOWER(TRIM(e.title)) = LOWER(TRIM(:title)) AND e.author IS NOT NULL ORDER BY e.id DESC")
-    List<Entry> findAuthorForTitle(@Param("title") String title);
+    @Query("{ 'type': { $regex: 'Libro' }, 'title': { $regex: ?0, $options: 'i' }, 'author': { $exists: true, $ne: null } }")
+    List<Entry> findAuthorForTitle(String title);
 
-    @Query("SELECT e FROM Entry e WHERE e.type LIKE '%Pel%' AND LOWER(TRIM(e.title)) = LOWER(TRIM(:title)) AND e.director IS NOT NULL ORDER BY e.id DESC")
-    List<Entry> findDirectorForTitle(@Param("title") String title);
+    @Query("{ 'type': { $regex: 'Pel' }, 'title': { $regex: ?0, $options: 'i' }, 'director': { $exists: true, $ne: null } }")
+    List<Entry> findDirectorForTitle(String title);
 
-    @Query("SELECT e FROM Entry e WHERE e.type LIKE '%Serie%' AND LOWER(TRIM(e.title)) = LOWER(TRIM(:title)) ORDER BY e.season DESC, e.episode DESC")
-    List<Entry> findLastSeriesEntry(@Param("title") String title);
+    @Query("{ 'type': { $regex: 'Serie' }, 'title': { $regex: ?0, $options: 'i' } }")
+    List<Entry> findLastSeriesEntry(String title);
 
-    @Query("SELECT e FROM Entry e WHERE e.type LIKE '%Pel%' AND e.seenInCinema = true ORDER BY e.date DESC")
+    @Query("{ 'type': { $regex: 'Pel' }, 'seenInCinema': true }")
     List<Entry> findCinemaMovies();
 }
