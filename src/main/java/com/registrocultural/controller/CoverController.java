@@ -1,6 +1,5 @@
 package com.registrocultural.controller;
 
-import com.registrocultural.service.ComicVineService;
 import com.registrocultural.service.TmdbService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,11 +12,9 @@ import java.util.Map;
 public class CoverController {
 
     private final TmdbService tmdb;
-    private final ComicVineService comicVine;
 
-    public CoverController(TmdbService tmdb, ComicVineService comicVine) {
+    public CoverController(TmdbService tmdb) {
         this.tmdb = tmdb;
-        this.comicVine = comicVine;
     }
 
     /**
@@ -44,9 +41,8 @@ public class CoverController {
             Map<String, String> details = tmdb.searchBookDetails(title, extra);
             response.put("url",    details.getOrDefault("url", ""));
             response.put("author", details.getOrDefault("author", ""));
-        } else if (type.contains("mic") || type.equalsIgnoreCase("Comic") || type.equalsIgnoreCase("Cómic")) {
-            String url = comicVine.searchComicCover(title);
-            response.put("url", url != null ? url : "");
+        } else if (type.contains("mic") || type.equalsIgnoreCase("Comic") || type.equalsIgnoreCase("C\u00f3mic")) {
+            response.put("url", "");
         }
 
         return ResponseEntity.ok(response);
