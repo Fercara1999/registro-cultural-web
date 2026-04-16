@@ -2,6 +2,7 @@ package com.registrocultural.model;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 import java.time.LocalDate;
 
 @Document(collection = "entries")
@@ -10,25 +11,64 @@ public class Entry {
     @Id
     private String id;
 
+    @Field("titulo")
     private String title;
+
+    @Field("tipo")
     private String type;
+
+    @Field("descripcion")
     private String description;
+
+    @Field("fecha")
     private LocalDate date;
+
+    @Field("portada")
     private String coverPath;
+
+    @Field("capitulos")
     private Integer chapters;
+
+    @Field("autor")
     private String author;
+
+    @Field("temporada")
     private Integer season;
+
+    @Field("capitulo")
     private Integer episode;
+
+    @Field("lugar")
     private String venue;
+
+    @Field("tomoUnico")
     private Boolean isSingleVolume;
+
+    @Field("tomo")
     private Integer comicVolume;
+
+    @Field("numero")
     private Integer comicIssue;
+
+    @Field("director")
     private String director;
+
+    @Field("vistaCine")
     private Boolean seenInCinema;
+
+    @Field("valoracion")
     private Integer rating;
+
+    @Field("terminado")
     private Boolean finished;
+
+    @Field("temporadaTerminada")
     private Boolean seasonFinished;
+
+    @Field("serieTerminada")
     private Boolean seriesFinished;
+
+    @Field("pendiente")
     private boolean pending = false;
 
     // ── Getters & Setters ────────────────────────────────────────
