@@ -29,28 +29,28 @@ public class EntryController {
 
     private static final Map<String, String> KPI_LABELS = Map.ofEntries(
         Map.entry("total",            "Todos los registros"),
-        Map.entry("capitulosSeries",  "Capítulos de series"),
-        Map.entry("capitulosLibros",  "Capítulos de libros"),
-        Map.entry("peliculas",        "Películas"),
-        Map.entry("comics",           "Cómics"),
+        Map.entry("capitulosSeries",  "Cap\u00edtulos de series"),
+        Map.entry("capitulosLibros",  "Cap\u00edtulos de libros"),
+        Map.entry("peliculas",        "Pel\u00edculas"),
+        Map.entry("comics",           "C\u00f3mics"),
         Map.entry("teatro",           "Teatro"),
         Map.entry("cine",             "Vistos en el cine"),
         Map.entry("librosTerminados", "Libros terminados"),
         Map.entry("librosEnCurso",    "Libros en curso"),
         Map.entry("seriesTerminadas", "Series terminadas"),
         Map.entry("seriesEnCurso",    "Series en curso"),
-        Map.entry("pelisEnCine",      "Películas en el cine"),
-        Map.entry("pelisEnCasa",      "Películas en casa"),
-        Map.entry("comicsTerminados", "Cómics terminados"),
-        Map.entry("comicsEnCurso",    "Cómics en curso")
+        Map.entry("pelisEnCine",      "Pel\u00edculas en el cine"),
+        Map.entry("pelisEnCasa",      "Pel\u00edculas en casa"),
+        Map.entry("comicsTerminados", "C\u00f3mics terminados"),
+        Map.entry("comicsEnCurso",    "C\u00f3mics en curso")
     );
 
     private static final Map<String, String> PERIOD_LABELS = Map.of(
         "semana",       "esta semana",
-        "ultimaSemana", "la última semana",
+        "ultimaSemana", "la \u00faltima semana",
         "mes",          "este mes",
-        "ultimoMes",    "el último mes",
-        "anio",         "este año",
+        "ultimoMes",    "el \u00faltimo mes",
+        "anio",         "este a\u00f1o",
         "todo",         "todo el tiempo"
     );
 
@@ -128,7 +128,7 @@ public class EntryController {
             entry.setPending(false);
             applyCover(entry, cover, autoCoverUrl, existingCoverPath, ra);
             service.save(entry);
-            ra.addFlashAttribute("success", "✅ Entrada registrada correctamente");
+            ra.addFlashAttribute("success", "\u2705 Entrada registrada correctamente");
 
         } else {
             String coverPath = resolveCoverPath(cover, autoCoverUrl, existingCoverPath);
@@ -147,8 +147,8 @@ public class EntryController {
                     entry.setCoverPath(coverPath);
                     service.save(entry);
                 }
-                ra.addFlashAttribute("success", "✅ " + chaptersList.size() + " registros creados (cap. " +
-                    chaptersList.get(0) + "–" + chaptersList.get(lastIdx) + ")");
+                ra.addFlashAttribute("success", "\u2705 " + chaptersList.size() + " registros creados (cap. " +
+                    chaptersList.get(0) + "\u2013" + chaptersList.get(lastIdx) + ")");
 
             } else if (multiEpisode) {
                 int lastIdx = episodes.size() - 1;
@@ -164,8 +164,8 @@ public class EntryController {
                     entry.setCoverPath(coverPath);
                     service.save(entry);
                 }
-                ra.addFlashAttribute("success", "✅ " + episodes.size() + " registros creados (cap. " +
-                    episodes.get(0) + "–" + episodes.get(lastIdx) + ")");
+                ra.addFlashAttribute("success", "\u2705 " + episodes.size() + " registros creados (cap. " +
+                    episodes.get(0) + "\u2013" + episodes.get(lastIdx) + ")");
 
             } else {
                 int lastIdx = issues.size() - 1;
@@ -182,14 +182,14 @@ public class EntryController {
                     entry.setCoverPath(coverPath);
                     service.save(entry);
                 }
-                ra.addFlashAttribute("success", "✅ " + issues.size() + " registros creados (nº " +
-                    issues.get(0) + "–" + issues.get(lastIdx) + ")");
+                ra.addFlashAttribute("success", "\u2705 " + issues.size() + " registros creados (n\u00ba " +
+                    issues.get(0) + "\u2013" + issues.get(lastIdx) + ")");
             }
         }
         return "redirect:/registrar";
     }
 
-    // ── PENDIENTES ────────────────────────────────────────────
+    // ── PENDIENTES ───────────────────────────────────────────────
 
     @GetMapping("/pendientes")
     public String pendientes(Model model) {
@@ -216,30 +216,30 @@ public class EntryController {
         entry.setVenue(venue); entry.setPending(true);
         applyCover(entry, cover, autoCoverUrl, existingCoverPath, ra);
         service.save(entry);
-        ra.addFlashAttribute("success", "⏳ Pendiente añadido correctamente");
+        ra.addFlashAttribute("success", "\u23f3 Pendiente a\u00f1adido correctamente");
         return "redirect:/pendientes";
     }
 
     @PostMapping("/pendientes/marcar-visto/{id}")
-    public String marcarVisto(@PathVariable String id, RedirectAttributes ra) {
+    public String marcarVisto(@PathVariable Integer id, RedirectAttributes ra) {
         service.getById(id).ifPresent(e -> {
             e.setPending(false); e.setDate(LocalDate.now()); service.save(e);
         });
-        ra.addFlashAttribute("success", "✅ Marcado como visto y movido a registros");
+        ra.addFlashAttribute("success", "\u2705 Marcado como visto y movido a registros");
         return "redirect:/pendientes";
     }
 
-    // ── EDITAR / ELIMINAR ───────────────────────────────────
+    // ── EDITAR / ELIMINAR ───────────────────────────────────────
 
     @GetMapping("/editar/{id}")
-    public String editarForm(@PathVariable String id, Model model) {
+    public String editarForm(@PathVariable Integer id, Model model) {
         return service.getById(id).map(e -> { model.addAttribute("entry", e); return "editar"; })
                       .orElse("redirect:/home");
     }
 
     @PostMapping("/editar/{id}")
     public String editarSave(
-            @PathVariable String id,
+            @PathVariable Integer id,
             @RequestParam String title,
             @RequestParam String type,
             @RequestParam(required = false) String description,
@@ -287,14 +287,14 @@ public class EntryController {
             }
             service.save(entry);
         });
-        ra.addFlashAttribute("success", "✅ Registro actualizado");
+        ra.addFlashAttribute("success", "\u2705 Registro actualizado");
         return "redirect:/home";
     }
 
     @PostMapping("/eliminar/{id}")
-    public String eliminar(@PathVariable String id, RedirectAttributes ra) {
+    public String eliminar(@PathVariable Integer id, RedirectAttributes ra) {
         service.delete(id);
-        ra.addFlashAttribute("success", "🗑️ Registro eliminado");
+        ra.addFlashAttribute("success", "\ud83d\uddd1\ufe0f Registro eliminado");
         return "redirect:/home";
     }
 
@@ -330,7 +330,7 @@ public class EntryController {
         String titulo = KPI_LABELS.getOrDefault(kpi, kpi);
         String periodoLabel = PERIOD_LABELS.getOrDefault(period, period);
         model.addAttribute("entries",      entries);
-        model.addAttribute("detalleTitle", titulo + " — " + periodoLabel);
+        model.addAttribute("detalleTitle", titulo + " \u2014 " + periodoLabel);
         model.addAttribute("period",       period);
         model.addAttribute("tipo",         tipo);
         model.addAttribute("kpi",          kpi);
@@ -445,6 +445,7 @@ public class EntryController {
                 .filter(e -> e.getTitle() != null && e.getTitle().trim().toLowerCase().equals(titleLower))
                 .collect(Collectors.toList());
 
+            // Tomo con mayor número de volumen registrado
             Optional<Entry> lastVolOpt = comicEntries.stream()
                 .filter(e -> e.getComicVolume() != null)
                 .max(Comparator.comparingInt(Entry::getComicVolume));
@@ -454,9 +455,12 @@ public class EntryController {
                 boolean tomoTerminado = Boolean.TRUE.equals(lastVol.getFinished());
                 int nextVolume = tomoTerminado ? lastVol.getComicVolume() + 1 : lastVol.getComicVolume();
                 result.put("comicVolume", nextVolume);
+
                 if (tomoTerminado) {
+                    // Tomo nuevo: el número de serie empieza en 1
                     result.put("comicIssue", 1);
                 } else {
+                    // Mismo tomo: siguiente número dentro del tomo actual
                     comicEntries.stream()
                         .filter(e -> e.getComicVolume() != null && e.getComicVolume().equals(lastVol.getComicVolume()))
                         .filter(e -> e.getComicIssue() != null)
@@ -464,6 +468,7 @@ public class EntryController {
                         .ifPresent(lastIssue -> result.put("comicIssue", lastIssue.getComicIssue() + 1));
                 }
             } else {
+                // Sin tomos previos: buscar solo por número de serie global
                 comicEntries.stream()
                     .filter(e -> e.getComicIssue() != null)
                     .max(Comparator.comparingInt(Entry::getComicIssue))
@@ -474,7 +479,7 @@ public class EntryController {
         return ResponseEntity.ok(result);
     }
 
-    // ── Helpers ──────────────────────────────────────────
+    // ── Helpers ────────────────────────────────────────────────
 
     private List<Integer> parseIssueRange(String raw) {
         if (raw == null || raw.isBlank()) return Collections.emptyList();

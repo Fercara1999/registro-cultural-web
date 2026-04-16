@@ -1,19 +1,28 @@
 package com.registrocultural.model;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
+import jakarta.persistence.*;
 import java.time.LocalDate;
 
-@Document(collection = "entries")
+@Entity
+@Table(name = "entries")
 public class Entry {
 
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
 
+    @Column(nullable = false)
     private String title;
+
+    @Column(nullable = false)
     private String type;
+
+    @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(nullable = false)
     private LocalDate date;
+
     private String coverPath;
     private Integer chapters;
     private String author;
@@ -29,11 +38,14 @@ public class Entry {
     private Boolean finished;
     private Boolean seasonFinished;
     private Boolean seriesFinished;
+
+    /** true = pendiente (quiero ver/leer), false/null = ya visto/leido */
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
     private boolean pending = false;
 
     // ── Getters & Setters ────────────────────────────────────────
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public Integer getId() { return id; }
+    public void setId(Integer id) { this.id = id; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public String getType() { return type; }

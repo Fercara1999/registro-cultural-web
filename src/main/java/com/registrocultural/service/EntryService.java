@@ -67,7 +67,7 @@ public class EntryService {
             .collect(Collectors.toList());
     }
 
-    public Optional<Entry> getById(String id) {
+    public Optional<Entry> getById(Integer id) {
         return repo.findById(id);
     }
 
@@ -75,7 +75,7 @@ public class EntryService {
         return repo.save(entry);
     }
 
-    public void delete(String id) {
+    public void delete(Integer id) {
         repo.deleteById(id);
     }
 
@@ -167,7 +167,7 @@ public class EntryService {
         }
     }
 
-    // ── STATS ────────────────────────────────────────────
+    // ── STATS ────────────────────────────────────────────────
 
     public Map<String, Object> getStats(String period, String tipo) {
         List<Entry> all = getAllNonPending();
@@ -209,13 +209,14 @@ public class EntryService {
             .count();
         stats.put("capitulosLibros", capitulosLibros);
 
+        // Gráfico temporal adaptado al periodo
         Map<String, Long> porPeriodo;
         String periodLabel;
         if ("semana".equals(p) || "ultimaSemana".equals(p)) {
-            periodLabel = "semana".equals(p) ? "Evolución diaria" : "Evolución diaria (última semana)";
+            periodLabel = "semana".equals(p) ? "Evolución diaria" : "Evolución diaria (\u00faltima semana)";
             LocalDate refDay = "ultimaSemana".equals(p) ? now.minusDays(6) : now.minusDays(now.getDayOfWeek().getValue() - 1);
             porPeriodo = new LinkedHashMap<>();
-            String[] dayNames = {"Lun","Mar","Mié","Jue","Vie","Sáb","Dom"};
+            String[] dayNames = {"Lun","Mar","Mi\u00e9","Jue","Vie","S\u00e1b","Dom"};
             for (int i = 0; i < 7; i++) {
                 LocalDate d = refDay.plusDays(i);
                 String lbl = "ultimaSemana".equals(p)
@@ -226,8 +227,9 @@ public class EntryService {
                 porPeriodo.put(lbl, cnt);
             }
         } else if ("mes".equals(p) || "ultimoMes".equals(p)) {
-            periodLabel = "ultimoMes".equals(p) ? "Evolución semanal (último mes)" : "Evolución semanal";
+            periodLabel = "ultimoMes".equals(p) ? "Evolución semanal (\u00faltimo mes)" : "Evolución semanal";
             porPeriodo = new LinkedHashMap<>();
+            // Para ultimoMes agrupamos por semana con etiqueta dd/MM
             if ("ultimoMes".equals(p)) {
                 LocalDate refStart = from;
                 for (int w = 0; w < 5; w++) {
@@ -281,15 +283,15 @@ public class EntryService {
         if (!filterTipo) {
             porTipo.put("Libro",       count(filtered, "Libro"));
             porTipo.put("Serie",       count(filtered, "Serie"));
-            porTipo.put("Película",    count(filtered, "Pel"));
+            porTipo.put("Pel\u00edcula",    count(filtered, "Pel"));
             porTipo.put("Teatro",      count(filtered, "Teatro"));
-            porTipo.put("Cómic",       count(filtered, "mic"));
+            porTipo.put("C\u00f3mic",       count(filtered, "mic"));
         } else {
             porTipo.put(tipo, (long) filtered.size());
         }
         stats.put("porTipo", porTipo);
 
-        String[] dias = {"Lun","Mar","Mié","Jue","Vie","Sáb","Dom"};
+        String[] dias = {"Lun","Mar","Mi\u00e9","Jue","Vie","S\u00e1b","Dom"};
         long[] porDia = new long[7];
         for (Entry e : filtered) porDia[e.getDate().getDayOfWeek().getValue() - 1]++;
         stats.put("porDia",     porDia);
@@ -355,7 +357,7 @@ public class EntryService {
             case "ultimoMes"    -> now.minusDays(29);
             case "anio"         -> now.withDayOfYear(1);
             case "todo"         -> LocalDate.of(2000, 1, 1);
-            default             -> now.withDayOfMonth(1);
+            default             -> now.withDayOfMonth(1);  // "mes"
         };
     }
 
@@ -376,7 +378,7 @@ public class EntryService {
             extra.put("seriesTerminadas", terminadas);
             extra.put("seriesEnCurso",    entries.size() - terminadas);
             extra.put("avgRating",        avgRating.isPresent() ? String.format("%.1f", avgRating.getAsDouble()) : "-");
-        } else if ("Película".equals(tipo)) {
+        } else if ("Pel\u00edcula".equals(tipo)) {
             long enCine = entries.stream().filter(e -> Boolean.TRUE.equals(e.getSeenInCinema())).count();
             OptionalDouble avgRating = entries.stream().filter(e -> e.getRating() != null && e.getRating() > 0).mapToInt(Entry::getRating).average();
             extra.put("pelisEnCine",      enCine);
@@ -388,7 +390,7 @@ public class EntryService {
             extra.put("avgRating",        avgRating.isPresent() ? String.format("%.1f", avgRating.getAsDouble()) : "-");
             extra.put("lugaresDistintos", lugares.size());
             extra.put("topLugares",       lugares.stream().limit(5).collect(Collectors.toList()));
-        } else if ("Cómic".equals(tipo)) {
+        } else if ("C\u00f3mic".equals(tipo)) {
             long terminados = entries.stream().filter(e -> Boolean.TRUE.equals(e.getFinished())).count();
             OptionalDouble avgRating = entries.stream().filter(e -> e.getRating() != null && e.getRating() > 0).mapToInt(Entry::getRating).average();
             extra.put("comicsTerminados", terminados);
@@ -402,9 +404,9 @@ public class EntryService {
         return switch (tipo) {
             case "Libro"       -> "Libro";
             case "Serie"       -> "Serie";
-            case "Película"    -> "Pel";
+            case "Pel\u00edcula"    -> "Pel";
             case "Teatro"      -> "Teatro";
-            case "Cómic"       -> "mic";
+            case "C\u00f3mic"       -> "mic";
             default            -> tipo;
         };
     }
@@ -414,13 +416,7 @@ public class EntryService {
     }
 
     public List<String> getTitleSuggestions(String type) {
-        return repo.findDistinctTitlesByType(type != null ? type : "")
-                   .stream()
-                   .map(Entry::getTitle)
-                   .filter(t -> t != null && !t.isBlank())
-                   .distinct()
-                   .sorted()
-                   .collect(Collectors.toList());
+        return repo.findDistinctTitlesByType(type != null ? type : "");
     }
 
     public String getAuthorForTitle(String title) {
