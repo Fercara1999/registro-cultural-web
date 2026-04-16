@@ -126,7 +126,7 @@ public class EntryController {
                 season, epInt, venue, director, seenInCinema, isSingleVolume,
                 comicVolume, issueInt, finished, seasonFinished, seriesFinished);
             entry.setPending(false);
-            applyCover(entry, cover, autoCoverUrl, existingCoverPath, ra);
+            applyCover(entry, cover, autoCoverUrl, existingCoverPath);
             service.save(entry);
             ra.addFlashAttribute("success", "✅ Entrada registrada correctamente");
 
@@ -214,7 +214,7 @@ public class EntryController {
         entry.setTitle(title.trim()); entry.setType(type); entry.setDescription(description);
         entry.setDate(LocalDate.now()); entry.setAuthor(author); entry.setDirector(director);
         entry.setVenue(venue); entry.setPending(true);
-        applyCover(entry, cover, autoCoverUrl, existingCoverPath, ra);
+        applyCover(entry, cover, autoCoverUrl, existingCoverPath);
         service.save(entry);
         ra.addFlashAttribute("success", "⏳ Pendiente añadido correctamente");
         return "redirect:/pendientes";
@@ -283,7 +283,7 @@ public class EntryController {
             if (cover != null && !cover.isEmpty()) {
                 try { entry.setCoverPath(service.saveCover(cover)); } catch (IOException e) { /* log */ }
             } else if (autoCoverUrl != null && !autoCoverUrl.isBlank()) {
-                try { entry.setCoverPath(downloadRemoteCover(autoCoverUrl, service.getCoversDir())); } catch (IOException e) { /* sin portada */ }
+                entry.setCoverPath(autoCoverUrl);
             }
             service.save(entry);
         });
@@ -515,18 +515,23 @@ public class EntryController {
         return e;
     }
 
+    /**
+     * Resuelve la portada: si hay fichero subido lo guarda en disco,
+     * si hay URL externa (TMDB) la guarda directamente como coverPath,
+     * si hay ruta existente la reutiliza.
+     */
     private String resolveCoverPath(MultipartFile cover, String autoCoverUrl, String existingCoverPath) {
         if (cover != null && !cover.isEmpty()) {
             try { return service.saveCover(cover); } catch (IOException e) { /* sin portada */ }
         }
         if (autoCoverUrl != null && !autoCoverUrl.isBlank()) {
-            try { return downloadRemoteCover(autoCoverUrl, service.getCoversDir()); } catch (IOException e) { /* sin portada */ }
+            return autoCoverUrl; // guardamos la URL directamente
         }
         if (existingCoverPath != null && !existingCoverPath.isBlank()) return existingCoverPath;
         return null;
     }
 
-    private void applyCover(Entry entry, MultipartFile cover, String autoCoverUrl, String existingCoverPath, RedirectAttributes ra) {
+    private void applyCover(Entry entry, MultipartFile cover, String autoCoverUrl, String existingCoverPath) {
         String path = resolveCoverPath(cover, autoCoverUrl, existingCoverPath);
         if (path != null) entry.setCoverPath(path);
     }

@@ -3,8 +3,13 @@
 <body>
 <div th:fragment="card(entry)" class="entry-card-inner">
   <div class="card-cover">
-    <img th:if="${entry.coverPath}" th:src="@{/covers/{f}(f=${entry.coverPath})}" class="cover-img" alt="portada"/>
-    <span th:unless="${entry.coverPath}" class="cover-placeholder">📷</span>
+    <!-- URL externa (TMDB, Google Books, etc.) -->
+    <img th:if="${entry.coverPath != null and entry.coverPath.startsWith('http')}"
+         th:src="${entry.coverPath}" class="cover-img" alt="portada"/>
+    <!-- Fichero local -->
+    <img th:if="${entry.coverPath != null and !entry.coverPath.startsWith('http')}"
+         th:src="@{/covers/{f}(f=${entry.coverPath})}" class="cover-img" alt="portada"/>
+    <span th:if="${entry.coverPath == null}" class="cover-placeholder">📷</span>
   </div>
   <div class="card-info">
     <span class="card-type" th:text="${entry.type}"></span>

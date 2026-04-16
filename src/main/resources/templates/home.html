@@ -45,19 +45,23 @@
       <h2>🕒 Últimos registros <span class="badge" th:text="${recentEntries.size()}">0</span></h2>
       <div class="home-entry-list" th:if="${not #lists.isEmpty(recentEntries)}">
         <div th:each="entry : ${recentEntries}" class="home-entry">
-          <img th:if="${entry.coverPath}" th:src="@{/covers/{f}(f=${entry.coverPath})}" class="cover-thumb" alt="portada"/>
-          <div th:unless="${entry.coverPath}" class="cover-placeholder-sm">📷</div>
+          <!-- URL externa -->
+          <img th:if="${entry.coverPath != null and entry.coverPath.startsWith('http')}"
+               th:src="${entry.coverPath}" class="cover-thumb" alt="portada"/>
+          <!-- Fichero local -->
+          <img th:if="${entry.coverPath != null and !entry.coverPath.startsWith('http')}"
+               th:src="@{/covers/{f}(f=${entry.coverPath})}" class="cover-thumb" alt="portada"/>
+          <!-- Sin portada -->
+          <div th:if="${entry.coverPath == null}" class="cover-placeholder-sm">📷</div>
           <div class="home-entry-info">
             <div class="home-entry-title" th:text="${entry.title}"></div>
             <div class="home-entry-meta">
               <span th:text="${entry.type}"></span>
               <span th:text="'📅 ' + ${entry.date}"></span>
-              <!-- Serie: temporada + capítulo (dos spans separados para evitar bug ternario en Thymeleaf) -->
               <th:block th:if="${entry.type != null and entry.type.contains('Serie') and entry.season != null}">
                 <span th:if="${entry.episode != null}" th:text="'T' + ${entry.season} + 'E' + ${entry.episode}"></span>
                 <span th:unless="${entry.episode != null}" th:text="'T' + ${entry.season}"></span>
               </th:block>
-              <!-- Cómic: tomo + número -->
               <th:block th:if="${entry.type != null and entry.type.contains('mic')}">
                 <span th:if="${entry.comicVolume != null and entry.comicIssue != null}" th:text="'Vol.' + ${entry.comicVolume} + ' #' + ${entry.comicIssue}"></span>
                 <span th:if="${entry.comicVolume != null and entry.comicIssue == null}" th:text="'Vol.' + ${entry.comicVolume}"></span>
@@ -82,19 +86,23 @@
       <div class="week-label" th:text="'Del ' + ${weekStart} + ' al ' + ${weekEnd}"></div>
       <div class="home-entry-list" th:if="${not #lists.isEmpty(weekEntries)}">
         <div th:each="entry : ${weekEntries}" class="home-entry">
-          <img th:if="${entry.coverPath}" th:src="@{/covers/{f}(f=${entry.coverPath})}" class="cover-thumb" alt="portada"/>
-          <div th:unless="${entry.coverPath}" class="cover-placeholder-sm">📷</div>
+          <!-- URL externa -->
+          <img th:if="${entry.coverPath != null and entry.coverPath.startsWith('http')}"
+               th:src="${entry.coverPath}" class="cover-thumb" alt="portada"/>
+          <!-- Fichero local -->
+          <img th:if="${entry.coverPath != null and !entry.coverPath.startsWith('http')}"
+               th:src="@{/covers/{f}(f=${entry.coverPath})}" class="cover-thumb" alt="portada"/>
+          <!-- Sin portada -->
+          <div th:if="${entry.coverPath == null}" class="cover-placeholder-sm">📷</div>
           <div class="home-entry-info">
             <div class="home-entry-title" th:text="${entry.title}"></div>
             <div class="home-entry-meta">
               <span th:text="${entry.type}"></span>
               <span th:text="'📅 ' + ${entry.date}"></span>
-              <!-- Serie: temporada + capítulo -->
               <th:block th:if="${entry.type != null and entry.type.contains('Serie') and entry.season != null}">
                 <span th:if="${entry.episode != null}" th:text="'T' + ${entry.season} + 'E' + ${entry.episode}"></span>
                 <span th:unless="${entry.episode != null}" th:text="'T' + ${entry.season}"></span>
               </th:block>
-              <!-- Cómic: tomo + número -->
               <th:block th:if="${entry.type != null and entry.type.contains('mic')}">
                 <span th:if="${entry.comicVolume != null and entry.comicIssue != null}" th:text="'Vol.' + ${entry.comicVolume} + ' #' + ${entry.comicIssue}"></span>
                 <span th:if="${entry.comicVolume != null and entry.comicIssue == null}" th:text="'Vol.' + ${entry.comicVolume}"></span>
