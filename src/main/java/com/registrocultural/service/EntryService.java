@@ -414,7 +414,13 @@ public class EntryService {
     }
 
     public List<String> getTitleSuggestions(String type) {
-        return repo.findDistinctTitlesByType(type != null ? type : "");
+        return repo.findDistinctTitlesByType(type != null ? type : "")
+                   .stream()
+                   .map(Entry::getTitle)
+                   .filter(t -> t != null && !t.isBlank())
+                   .distinct()
+                   .sorted()
+                   .collect(Collectors.toList());
     }
 
     public String getAuthorForTitle(String title) {
