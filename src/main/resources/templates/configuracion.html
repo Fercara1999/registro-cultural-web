@@ -27,42 +27,15 @@
     <h1 style="font-size:1.6rem;font-weight:700;margin-bottom:6px">⚙️ Configuración</h1>
     <p style="color:var(--muted);margin-bottom:28px;font-size:.93rem">Herramientas de mantenimiento y exportación de datos.</p>
 
+    <!-- Stat: solo registros en BD -->
     <div style="display:flex;gap:16px;margin-bottom:28px;flex-wrap:wrap">
-      <div class="stat-card" style="flex:1;min-width:160px">
+      <div class="stat-card" style="min-width:160px">
         <div class="stat-number" th:text="${totalEntries}">0</div>
         <div class="stat-label">registros en BD</div>
       </div>
-      <div class="stat-card" style="flex:1;min-width:160px">
-        <div class="stat-number" th:text="${coverCount}">0</div>
-        <div class="stat-label">portadas almacenadas</div>
-      </div>
-      <div class="stat-card" style="flex:1;min-width:160px">
-        <div class="stat-number" th:text="${coverSizeMb} + ' MB'">0 MB</div>
-        <div class="stat-label">espacio en disco</div>
-      </div>
     </div>
 
-    <div class="card" style="margin-bottom:20px;padding:24px">
-      <div style="display:flex;align-items:flex-start;gap:16px">
-        <div style="font-size:2.4rem;line-height:1">🖼️</div>
-        <div style="flex:1">
-          <h2 style="font-size:1.1rem;font-weight:700;margin:0 0 6px">Optimizar portadas</h2>
-          <p style="color:var(--muted);font-size:.88rem;margin:0 0 16px">
-            Redimensiona y recomprime todas las portadas guardadas en disco.
-            Solo se modifica una imagen si el resultado ocupa <strong>menos</strong> que el original.
-            El proceso es irreversible, pero no afecta a la base de datos.
-          </p>
-          <form method="post" th:action="@{/configuracion/optimizar-portadas}"
-                onsubmit="return confirmOptimize()">
-            <button type="submit" class="btn btn-primary"
-                    style="display:inline-flex;align-items:center;gap:8px">
-              🗃️ Optimizar ahora
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-
+    <!-- Exportar CSV -->
     <div class="card" style="padding:24px">
       <div style="display:flex;align-items:flex-start;gap:16px">
         <div style="font-size:2.4rem;line-height:1">📥</div>
@@ -75,23 +48,20 @@
           </p>
           <p style="color:var(--muted);font-size:.82rem;margin:0 0 16px">
             Columnas: id · título · tipo · descripción · fecha · valoración · capítulos · autor ·
-            temporada · capítulo · lugar · director · vistaCine · tomúÚnico · numTomo · numSerie ·
+            temporada · capítulo · lugar · director · vistaCine · tomoÚnico · numTomo · numSerie ·
             terminado · finTemporada · serieFinalizada · pendiente
           </p>
           <a th:href="@{/configuracion/exportar-csv}" class="btn btn-primary"
              style="display:inline-flex;align-items:center;gap:8px;text-decoration:none">
             📄 Descargar CSV
           </a>
+          <p th:if="${lastCsvExport}" style="margin-top:12px;font-size:.82rem;color:var(--muted)">
+            ⏱️ Última descarga: <strong th:text="${lastCsvExport}"></strong>
+          </p>
         </div>
       </div>
     </div>
   </div>
-
-  <script>
-    function confirmOptimize() {
-      return confirm('¿Optimizar todas las portadas? Esta acción es irreversible.');
-    }
-  </script>
 </main>
 <script th:src="@{/js/app.js}"></script>
 </body>
